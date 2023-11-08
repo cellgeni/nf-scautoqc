@@ -3,7 +3,7 @@
 nf-scautoqc is the Nextflow implementation of scAutoQC pipeline used in Oliver et al, 2023. 
 
 ## Contents of Repo:
-* `main.nf` - the Nextflow pipeline that executes STARsolo.
+* `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
 * `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
 * `RESUME-starsolo` - an example run script that executes the pipeline it has four hardcoded argument: `/path/to/sample/file`, `/path/to/starsolo-results`, `/path/to/cellbender-results`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
 * `bin/gather_matrices.py` - a Python script that gathers matrices from STARsolo, Velocyto and Cellbender outputs.
