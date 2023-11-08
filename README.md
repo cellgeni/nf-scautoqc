@@ -19,7 +19,7 @@ nf-scautoqc is the Nextflow implementation of scAutoQC pipeline used in Oliver e
 
 ![](scautoqc-diagram.png)
 
-1. gather_matrices  
+### 1. `gather_matrices`  
 
 This step requires three inputs: 
 * STARsolo output folder named "Gene"
@@ -28,31 +28,31 @@ This step requires three inputs:
 
 `gather_matrices` step combines the matrices from three inputs into one h5ad object with four layers (raw, spliced, unspliced, ambiguous). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
 
-2. run_qc  
+### 2. `run_qc`
 
 This step requires the output of `gather_matrices` step which is the h5ad object with four layers.  
 
 `run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html).
 
-3. find_doublets  
+### 3. `find_doublets`  
 
 This step requires the output of `run_qc` step which is the h5ad object with postqc columns.  
 
 `find_doublets` step runs [scrublet](https://github.com/swolock/scrublet) on the h5ad object and annotates the doublet scores to cells. This step runs simultaneously with step 4 for efficiency.
 
-4. pool_all  
+### 4. `pool_all`  
 
 This step requires the outputs of `run_qc` step from all the samples.  
 
 `pool_all` step combines all of the objects produced in `run_qc` step in a single h5ad object.
 
-5. add_metadata  
+### 5. `add_metadata`  
 
 This step requires the h5ad output from `pool_all` and the scrublet csv outputs from `find_doublets` steps.  
 
 `add_metadata` step gives scores of different QC metrics of each sample, and adds scrublet scores (and the cell metadata according to samples if provided) to the h5ad object. (QC-related plots are generated but are not copied to output directory, this will be fixed in the future.)  
 
-6. integrate  
+### 6. `integrate`  
 
 This step requires the h5ad object from `add_metadata` step.
 `integrate` step removes stringent doublets (doublet score higher than 0.3, and bh score lower than 0.05) applies scVI integration to all samples by using "sampleID" as a batch key, and "log1p_n_counts" and "percent_mito" columns as categorical covariates. The final integrated object is given as the output of all of this pipeline. The steps below are applied before running integration:  
@@ -61,3 +61,7 @@ This step requires the h5ad object from `add_metadata` step.
 * All cell cycle genes are removed.  
 * The dimensionality of the latent space is chosen as 20.
 * The batch size is chosen as 256.
+
+## Original workflow scheme
+
+![](scautoqc-original-diagram.png)
