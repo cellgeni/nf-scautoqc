@@ -9,7 +9,7 @@ metadatafile=/path/to/metadata/file
 
 nextflow run main.nf \
   --SAMPLEFILE $samplefile \
-  --metadata $metadatafile \
+  --metadata $metadatafile \ # comment out this line if there is no metadata 
   --ss_prefix /path/to/starsolo-results \
   --cb_prefix /path/to/cellbender-results \
   --project_tag project1 \
