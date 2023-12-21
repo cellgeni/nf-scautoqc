@@ -74,12 +74,12 @@ This step requires the h5ad object from `add_metadata` step.
 * It is planned to separate this pipeline into mmultiple workflows (after gather_matrices, after run_qc…).
 * It will allow the pipeline to be run from any step by using outputs from different datasets by this pipeline.
 
-### Add run_cellbender process
+### Add run_cellbender process
 
 * Current version of pipeline assumes that the CellBender outputs exist. 
 * This addition will allow the pipeline to run CellBender if the inputs do not exist.
 
-## Expand input options
+### Expand input options
 
 * Current version of pipeline is able to take STARsolo outputs only.
 * This expansion will allow user to specify the input type whether it is Cellranger or STARsolo input.
