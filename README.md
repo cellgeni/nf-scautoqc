@@ -62,6 +62,30 @@ This step requires the h5ad object from `add_metadata` step.
 * The dimensionality of the latent space is chosen as 20.
 * The batch size is chosen as 256.
 
+## Future plans
+
+### Fix the plots issue
+
+* Currently, QC plots cannot be generated or copied to the output folder. 
+* The fix aims to resolve this issue.
+
+### Modularise the pipeline
+
+* It is planned to separate this pipeline into mmultiple workflows (after gather_matrices, after run_qc…).
+* It will allow the pipeline to be run from any step by using outputs from different datasets by this pipeline.
+
+### Add run_cellbender process
+
+* Current version of pipeline assumes that the CellBender outputs exist. 
+* This addition will allow the pipeline to run CellBender if the inputs do not exist.
+
+## Expand input options
+
+* Current version of pipeline is able to take STARsolo outputs only.
+* This expansion will allow user to specify the input type whether it is Cellranger or STARsolo input.
+* For Cellranger inputs, the pipeline will be able to run Velocyto and CellBender without specifying anything additionally.
+
+
 ## Original workflow scheme
 
 ![](scautoqc-original-diagram.png)
