@@ -21,14 +21,14 @@ nf-scautoqc is the Nextflow implementation of scAutoQC pipeline used in Oliver e
 ## Workflow
 
 ![](scautoqc-diagram.png)
-output 1: h5ad object with four layers
-output 2: h5ad object with qc metrics
-output 3: QC plots
-output 4: CSV of scrublet scores
-output 5: pooled h5ad object
-output 6: pooled h5ad object with metadata
-output 7: QC plots
-output 8: CSV with percentages of the cells passed QC
+output 1: h5ad object with four layers  
+output 2: h5ad object with qc metrics  
+output 3: QC plots  
+output 4: CSV of scrublet scores  
+output 5: pooled h5ad object  
+output 6: pooled h5ad object with metadata  
+output 7: QC plots  
+output 8: CSV with percentages of the cells passed QC  
 output 9: final h5ad object
 
 ### 1. `gather_matrices`  

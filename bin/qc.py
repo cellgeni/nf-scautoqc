@@ -371,7 +371,6 @@ def main(args):
     ad.obs['sampleID'] = sid
     
     if not plot_only:
-        if not 
         ad.write("postqc.h5ad", compression="gzip")
 
     if ad.obs['good_qc_cluster_mito80'].mean() < 0.25:
