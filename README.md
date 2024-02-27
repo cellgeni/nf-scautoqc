@@ -2,7 +2,10 @@
 
 nf-scautoqc is the Nextflow implementation of scAutoQC pipeline used in Oliver et al, 2023. 
 
-## Contents of Repo:
+## Contents:
+
+
+## Files:
 * `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
 * `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
 * `RESUME-starsolo` - an example run script that executes the pipeline it has four hardcoded argument: `/path/to/sample/file`, `/path/to/starsolo-results`, `/path/to/cellbender-results`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
@@ -18,6 +21,15 @@ nf-scautoqc is the Nextflow implementation of scAutoQC pipeline used in Oliver e
 ## Workflow
 
 ![](scautoqc-diagram.png)
+output 1: h5ad object with four layers
+output 2: h5ad object with qc metrics
+output 3: QC plots
+output 4: CSV of scrublet scores
+output 5: pooled h5ad object
+output 6: pooled h5ad object with metadata
+output 7: QC plots
+output 8: CSV with percentages of the cells passed QC
+output 9: final h5ad object
 
 ### 1. `gather_matrices`  
 
@@ -64,10 +76,12 @@ This step requires the h5ad object from `add_metadata` step.
 
 ## Future plans
 
-### Fix the plots issue
+### Add support for multiome and single-nucleus samples
 
-* Currently, QC plots cannot be generated or copied to the output folder. 
-* The fix aims to resolve this issue.
+* nf-scautoqc currently uses "Gene" output folder from STARsolo.
+* For the analysis of multiome and single-nucleus samples, GeneFull output folder from STARsolo is preferred. This matrix includes reads from introns.
+* This pipeline currently doesn't support GeneFull matrices.
+* In the future, the user will be able to specify STARsolo matrix (Gene or GeneFull).
 
 ### Modularise the pipeline
 
@@ -85,7 +99,37 @@ This step requires the h5ad object from `add_metadata` step.
 * This expansion will allow user to specify the input type whether it is Cellranger or STARsolo input.
 * For Cellranger inputs, the pipeline will be able to run Velocyto and CellBender without specifying anything additionally.
 
+### Smart memory allocation
+
+* This addition will estimate the average memory needed for pool_all step, so it won't need to try multiple times until it runs well.
+
 
 ## Original workflow scheme
 
 ![](scautoqc-original-diagram.png)
+
+## Release notes
+
+### v0.2.0
+* Improvements in python scripts
+  * Changed output filenames in all scripts
+  * gather_matrices.py
+    - added support for Cellbender v3 outputs
+  * qc.py
+    - moved sampleID annotation step from pool_all.py
+  * pool_all.py
+    - added support for resume functionality of nextflow
+    - removed sampleID annotation step (moved to qc.py)
+  * add_scrublet_meta.py
+    - added an extra step to remove empty columns in input metadata
+  * integration.py
+    - added support to specify batch key and categorical covariate keys (default: sampleID for batch key, empty for covariates)
+* Improvements in main.py
+  * fixed output generation problem
+  * modified find_doublets process so it only runs for good QC samples
+  * added batch_key parameter to specify the column from cell metadata for scVI integration (default: sampleID)
+  * added covar_keys parameter to specify the columns from cell metadata for scVI integration (no default)
+* Updated workflow figure in README.md
+
+### v0.1.0
+* First release

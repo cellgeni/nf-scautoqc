@@ -5,6 +5,8 @@ Usage: sample_qc.py --obj pooled_obj.h5ad --covar
 
 Options:
   --obj        path of the pooled h5ad
+  --batch      batch key
+  --covar      keys of categorical covariates
 """
 def run_mde(
     data,
@@ -82,10 +84,12 @@ import numpy as np
 import anndata
 import gc
 import argparse
+import joblib
 
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--obj", default=None, help="path of the pooled h5ad")
-my_parser.add_argument("--covar", default=None, help="path of the pooled h5ad")
+my_parser.add_argument("--batch", default=None, help="batch key")
+my_parser.add_argument("--covar", default=None, help="categorical covariate keys")
 args = my_parser.parse_args()
 
 pooled_ad0 = sc.read(args.obj)
@@ -100,8 +104,8 @@ arches_params = dict(
 
 pooled_ad1 = sc.read(args.obj)
 
-# if not args.covar == None:
-#     args.covar = args.covar.split(',')
+if not args.covar == None:
+    args.covar = args.covar.split(',')
 
 pooled_ad1 = pooled_ad1[~pooled_ad1.obs.stringent_doublet].copy()
 
@@ -120,8 +124,7 @@ sc.pp.highly_variable_genes(
 
 scvi.model.SCVI.setup_anndata(
     pooled_ad1,
-    batch_key="sampleID",
-    # categorical_covariate_keys=args.covar,
+    batch_key=args.batch,
     continuous_covariate_keys=["log1p_n_counts", "percent_mito"],
 )
 
@@ -136,19 +139,19 @@ vae.train(
     use_gpu=True,
 )
 
-# joblib.dump(
-#     vae,
-#     f"scvi_model.pkl",
-# )
+joblib.dump(
+    vae,
+    f"scvi_model.pkl",
+)
 
 plt.plot(vae.history["elbo_train"])[0].figure.savefig("elbo_training.png")
 
 pooled_ad1.obsm["X_scvi"] = vae.get_latent_representation()
 
-# joblib.dump(
-#     pooled_ad1.obsm["X_scvi"],
-#     "Xscvi_embed.pkl"
-# )
+joblib.dump(
+    pooled_ad1.obsm["X_scvi"],
+    "Xscvi_embed.pkl"
+)
 
 mde_obj = run_mde(pooled_ad1.obsm["X_scvi"])
 
@@ -183,6 +186,6 @@ aux_ad = anndata.AnnData(
 del pooled_ad1
 
 aux_ad.write(
-    "pooled_healthy.gene_cellbender.good_qc_cluster_mito80.stringent_doublet_removed.hvg7500_noCC.scvi_output.lv20_batch256.h5ad",
+    "scautoqc_integrated.h5ad",
     compression="gzip",
 )

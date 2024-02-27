@@ -39,6 +39,13 @@ gc.collect()
 if not args.meta == None:
     metadata = pd.read_csv(args.meta) # assuming sample IDs are in sampleID column
 
+    for i in metadata.columns:
+        if i.startswith('Unnamed'):
+            del metadata[i]
+            continue
+        metadata[i] = metadata[i].astype('object')
+        metadata[i] = metadata[i].astype('category')
+
     obs_df = (
         pooled_ad0.obs.reset_index()
         .merge(
@@ -48,8 +55,8 @@ if not args.meta == None:
             right_on="sampleID",
         )
         .set_index("index")
-    )
-
+    )    
+        
     if not (obs_df.index == pooled_ad0.obs_names).all():
         print('metadata index and object index are not identical, dying...')
         exit()
@@ -174,6 +181,8 @@ obs_df = pooled_ad1.obs.merge(
     scrublet_results_df, how="left", left_index=True, right_index=True
 )
 
+obs_df['scrublet_done'] = obs_df['scrublet_done'].astype('category')
+
 if not (obs_df.index == pooled_ad1.obs_names).all():
     print('scrublet index and object index are not identical, dying...')
     exit()
@@ -188,6 +197,6 @@ pooled_ad1.obs["stringent_doublet"] = (pooled_ad1.obs.scrublet_score > 0.3) | (
 )
 
 pooled_ad1.write(
-    "pooled.gene_cellbender.good_qc_cluster_mito80.doublet_flagged.h5ad",
+    "pooled_postqc_doubletflagged_metaadded.h5ad",
     compression="gzip",
 )

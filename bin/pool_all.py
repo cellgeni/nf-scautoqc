@@ -24,16 +24,21 @@ samples = args.samples.split(',')
 objects = args.objects.split(',')
 
 ads = []
-for sid, obj in zip(samples, objects):
-    print(sid)
+for obj in objects:
     ads.append(sc.read(obj))
-    ads[-1].obs['sampleID'] = sid
+
+samp_ads = [ad.obs['sampleID'].unique()[0] for ad in ads]
+new_order = [samp_ads.index(item) for item in samp_ads]
+
+ads1 = [ads[i] for i in new_order]
+del ads
+gc.collect()
 
 pooled_ad = anndata.AnnData.concatenate(
-    *ads, batch_key="sampleID", batch_categories=samples
+    *ads1, batch_key="sampleID", batch_categories=samples
 )
 
-del ads
+del ads1
 gc.collect()
 
 for suffix in ("", "_raw", "_spliced", "_unspliced"):
@@ -65,6 +70,6 @@ for suffix in ("", "_raw", "_spliced", "_unspliced"):
         del pooled_ad.var[f"n_cells{suffix}-{sid}"]
 
 pooled_ad.write(
-    "pooled.gene_velo_cellbender.post_qc.h5ad",
+    "pooled_postqc.h5ad",
     compression="gzip",
 )

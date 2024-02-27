@@ -113,7 +113,7 @@ def main(args):
         df = sk.run_scrublet(ad1, inplace=False)
 
     df.index.name = args.samp
-    df.to_csv("gene_velo_cellbender.good_qc_cluster_mito80.scrublet.csv")
+    df.to_csv("postqc_scrublet.csv")
 
     return 0
 

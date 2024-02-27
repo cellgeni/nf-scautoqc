@@ -24,13 +24,14 @@ process gather_matrices {
 process run_qc {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/postqc_h5ad", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
-  // publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots/${samp}", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots/${samp}", pattern: '*.png', mode: 'copy'
 
   input:
   tuple val(samp), path(gath_out)
 
   output:
-  tuple val(samp), path("gene_velo_cellbender.post_qc.h5ad"), emit: samp_obj
+  tuple val(samp), path("postqc.h5ad"), path("*-scr"), emit: samp_obj
+  path("*.png")
 
   script:
   """
@@ -43,10 +44,13 @@ process find_doublets {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/scrublet_out", pattern: '*.csv', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
 
   input:
-  tuple val(samp), path(qc_out)
+  tuple val(samp), path(qc_out), path(scr_bool)
 
   output:
-  tuple val(samp), path("gene_velo_cellbender.good_qc_cluster_mito80.scrublet.csv")
+  tuple val(samp), path("postqc_scrublet.csv")
+
+  when:
+  scr_bool.name.endsWith('yes-scr')
 
   script:
   """
@@ -64,7 +68,7 @@ process pool_all {
   val(qc_out)
 
   output:
-  path("pooled.gene_velo_cellbender.post_qc.h5ad")
+  path("pooled_postqc.h5ad")
 
   script:
   """
@@ -75,7 +79,7 @@ process pool_all {
 process add_metadata {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/pooled_h5ad", pattern: '*.h5ad', mode: 'copy'
-  // publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
   input:
@@ -84,7 +88,9 @@ process add_metadata {
   val(meta_path)
 
   output:
-  path("pooled.gene_cellbender.good_qc_cluster_mito80.doublet_flagged.h5ad")
+  path("pooled_postqc_doubletflagged_metaadded.h5ad"), emit: obj
+  path("*.png")
+  path("sample_passqc_df.csv")
 
   script:
   """
@@ -96,21 +102,26 @@ process integrate {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/pooled_h5ad", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/models", pattern: '*.pkl', mode: 'copy'
+
 
   input:
   path(qc2_out)
+  val(batch_key)
+  val(covar_keys)
 
   output:
-  path("pooled_healthy.gene_cellbender.good_qc_cluster_mito80.stringent_doublet_removed.hvg7500_noCC.scvi_output.lv20_batch256.h5ad")
+  path("scautoqc_integrated.h5ad")
+  path("*.png")
+  path("*.pkl")
 
   script:
   """
-  python ${baseDir}/bin/integration.py --obj ${qc2_out}
+  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${batch_key} --covar ${covar_keys}
   """
 }
 
 workflow {
-
   Channel.fromPath("${params.SAMPLEFILE}")
        .splitCsv (header: false) 
        .flatten()
@@ -123,8 +134,8 @@ workflow {
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect{ it[0] }.map { it.join(',') },run_qc.out.samp_obj.collect{ it[1] }.map { it.join(',') })
-  add_metadata(pool_all.out, find_doublets.out.collect{ it[1] }.map { it.join(',') }, params.metadata)
-  integrate(add_metadata.out)
+  pool_all(run_qc.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') },run_qc.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
+  add_metadata(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
+  integrate(add_metadata.out.obj, params.batch_key, params.covar_keys)
 }
 

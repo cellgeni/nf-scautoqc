@@ -368,8 +368,16 @@ def main(args):
         f"{sid}.qc_plot.cluster_ufig.png", bbox_inches="tight"
     )
 
+    ad.obs['sampleID'] = sid
+    
     if not plot_only:
-        ad.write("gene_velo_cellbender.post_qc.h5ad", compression="gzip")
+        if not 
+        ad.write("postqc.h5ad", compression="gzip")
+
+    if ad.obs['good_qc_cluster_mito80'].mean() < 0.25:
+        open(f'{sid}_no-scr', 'a').close()
+    else:
+        open(f'{sid}_yes-scr', 'a').close()
 
     return 0
 

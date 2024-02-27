@@ -29,13 +29,139 @@ import anndata
 import scanpy as sc
 import sctk as sk
 
+import h5py
+
+def read_cellbender(
+    input_h5,
+    remove_zero=True,
+    remove_nan=True,
+    train_history=False,
+    latent_gene_encoding=False,
+    add_suffix=None,
+):
+    """
+    Read cellbender output h5 generated from mtx input
+    """
+    import scipy.sparse as sp
+
+    f = h5py.File(input_h5, "r")
+    if "matrix" in f:
+        mat = f["matrix"]
+        feat = mat["features"]
+        feat_name = feat["name"][()]
+        vardict = {
+            "gene_ids": feat["id"][()].astype(str),
+            "feature_type": feat["feature_type"][:].astype(str),
+        }
+    elif "background_removed" in f:
+        mat = f["background_removed"]
+        vardict = {
+            "gene_ids": mat["genes"][()].astype(str),
+        }
+        feat_name = mat["gene_names"][()]
+    else:
+        raise ValueError("The data doesn't look like cellbender output")
+    n_var, n_obs = tuple(mat["shape"][()])
+    if "metadata" in f:
+        ad = read_cellbender_v3(f,
+            feat=feat,
+            feat_name=feat_name,
+            vardict=vardict,
+            n_var=n_var,
+            n_obs=n_obs,
+            remove_zero=remove_zero,
+            remove_nan=remove_nan,
+            train_history=train_history,
+            latent_gene_encoding=latent_gene_encoding,
+            add_suffix=add_suffix,)
+    else:
+        ad = sk.read_cellbender(input_h5)
+    return ad
+
+def read_cellbender_v3(f,
+    feat,
+    feat_name,
+    vardict,
+    n_var,
+    n_obs,
+    remove_zero=True,
+    remove_nan=True,
+    train_history=False,
+    latent_gene_encoding=False,
+    add_suffix=None,
+):
+    import numpy as np
+    import anndata
+    import scipy.sparse as sp
+    import pandas as pd
+    cols = ["cell_probability", "droplet_efficiency"]
+    if f['droplet_latents']['barcode_indices_for_latents'].shape[0] < n_obs:
+        bidx = f["droplet_latents"]["barcode_indices_for_latents"][()]
+        obsdict = {}
+        for x in cols:
+            val = np.empty(n_obs)
+            val.fill(np.nan)
+            val[bidx] = f["droplet_latents"][x][()]
+            obsdict[x] = val
+        if latent_gene_encoding:
+            lge = f["droplet_latents"]["gene_expression_encoding"][()]
+            obsm = np.empty((n_obs, lge.shape[1]))
+            obsm.fill(np.nan)
+            obsm[bidx, :] = lge
+    else:
+        obsdict = {x: f["droplet_latents"][x] for x in cols}
+        if latent_gene_encoding:
+            obsm = f["droplet_latents"]["gene_expression_encoding"][()]
+    barcodes = np.array(
+        [b[:-2] if b.endswith("-1") else b for b in f["matrix"]["barcodes"][()].astype(str)]
+    )
+    ad = anndata.AnnData(
+        X=sp.csr_matrix(
+            (f["matrix"]["data"][()], f["matrix"]["indices"][()], f["matrix"]["indptr"][()]),
+            shape=(n_obs, n_var),
+        ),
+        var=pd.DataFrame(vardict, index=feat_name.astype(str)),
+        obs=pd.DataFrame(obsdict, index=barcodes),
+        uns={
+            "target_false_positive_rate": f['metadata']["target_false_positive_rate"][()],
+            "test_elbo": list(f['metadata']['learning_curve_test_elbo']),
+            "test_epoch": list(f['metadata']['learning_curve_test_epoch']),
+            # "overall_change_in_train_elbo": list(f['metadata']["overall_change_in_train_elbo"]), this doesn't exist in default h5 v3
+        }
+        if train_history
+        else {},
+    )
+    ad.var_names_make_unique()
+    if latent_gene_encoding:
+        ad.obsm["X_latent_gene_encoding"] = obsm
+
+    mask_nan = np.isnan(ad.obs.cell_probability)
+    mask_0 = ad.X.sum(axis=1).A1 <= 0
+
+    mask_remove = np.zeros(n_obs).astype(bool)
+    if remove_nan:
+        mask_remove = mask_remove | mask_nan
+    if remove_zero:
+        mask_remove = mask_remove | mask_0
+    idx_remove = np.where(mask_remove)[0]
+
+    idx_sort = pd.Series(np.argsort(ad.obs_names))
+    idx_sort = idx_sort[~idx_sort.isin(idx_remove)]
+
+    ad1 = ad[idx_sort.values].copy()
+    del ad
+
+    if add_suffix:
+        ad1.obs_names = ad1.obs_names.astype(str) + add_suffix
+
+    return ad1
 
 def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
     logging.info("cr_gene_filtered_mtx done")
     cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
     logging.info("cr_velo_filtered_mtx done")
-    cb_gene_filtered_ad = sk.read_cellbender(cb_filtered_h5)
+    cb_gene_filtered_ad = read_cellbender(cb_filtered_h5)
     logging.info("cb_filtered_h5 done")
 
     common_cells = list(
