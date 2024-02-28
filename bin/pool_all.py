@@ -28,9 +28,10 @@ for obj in objects:
     ads.append(sc.read(obj))
 
 samp_ads = [ad.obs['sampleID'].unique()[0] for ad in ads]
-new_order = [samp_ads.index(item) for item in samp_ads]
+new_order = [samples.index(item) for item in samp_ads]
 
-ads1 = [ads[i] for i in new_order]
+ads1 = [ads[new_order.index(i)] for i in range(0,len(samples))]
+
 del ads
 gc.collect()
 
