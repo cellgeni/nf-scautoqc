@@ -7,7 +7,8 @@ nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichl
 ## Files:
 * `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
 * `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
-* `RESUME-starsolo` - an example run script that executes the pipeline it has four hardcoded argument: `/path/to/sample/file`, `/path/to/starsolo-results`, `/path/to/cellbender-results`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
+* `RESUME-scautoqc-all` - an example run script that executes the whole pipeline, it has four hardcoded argument: `/path/to/sample/file`, `/path/to/starsolo-results`, `/path/to/cellbender-results`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
+* `RESUME-scautoqc-afterqc` - an example run script that executes the pipeline after run_qc and find_doublets steps, it has four hardcoded argument: `/path/to/sample/file`, `/path/to/postqc/objects`, `/path/to/scrublet/csvs`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
 * `bin/gather_matrices.py` - a Python script that gathers matrices from STARsolo, Velocyto and Cellbender outputs.
 * `bin/qc.py` - a Python script that runs automatic QC workflow.
 * `bin/flag_doublet.py` - a Python script that runs scrublet to find doublets.
@@ -18,6 +19,36 @@ nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichl
 * `Dockerfile` - a dockerfile to reproduce the environment used to run the pipeline.
 
 ## Workflow
+
+The default version of the pipeline runs all the steps shown the diagram below. This pipeline can use the steps after `run_qc` and `find_doublets` if the entry is used as `after_qc` and this requires different parameters. All parameters needed for both case are already specified in RESUME scripts, and also can be found below:
+
+```
+# to run all the steps
+nextflow run main.nf \
+  -entry all \            # to run all steps or steps after qc
+  --SAMPLEFILE /path/to/sample/file \
+  --metadata /path/to/metadata/file \
+  --ss_prefix /path/to/starsolo-results \
+  --cb_prefix /path/to/cellbender-results \
+  --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
+  --batch_key sampleID \  # batch key to use in scVI integration
+  --ansi-log false \
+  -resume
+```
+
+```
+# to run after qc steps 
+nextflow run main.nf \
+  -entry afterQC \
+  --SAMPLEFILE /path/to/sample/file \
+  --postqc_path /path/to/postqc/objects \
+  --scrublet_path /path/to/scrublet/csvs \
+  --metadata /path/to/metadata/file \
+  --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
+  --batch_key sampleID \  # batch key to use in scVI integration
+  --ansi-log false \
+  -resume
+```
 
 ![](scautoqc-diagram.png)
 output 1: h5ad object with four layers  
@@ -43,7 +74,13 @@ This step requires three inputs:
 
 This step requires the output of `gather_matrices` step which is the h5ad object with four layers.  
 
-`run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html).
+`run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html). It applies the QC based on QC metrics, and run CellTypist based on four models which are specified below and defined as default in this pipeline:  
+*  **cecilia22_predH:** CellTypist model from the immune populations combined from 20 tissues of 18 studies, includes 32 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
+*  **cecilia22_predL:** CellTypist model from the immune sub-populations combined from 20 tissues of 18 studies, includes 98 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
+*  **elmentaite21_pred:** CellTypist model from the intestinal cells from fetal, pediatric (healthy and Crohn's disease) and adult human gut, includes 134 cell types (ref: [Elmentaite et al, 2021](https://doi.org/10.1038/s41586-021-03852-1))
+*  **suo22_pred:** CellTypist model from the stromal and immune populations from the human fetus, includes 138 cell types (ref: [Suo et al, 2022](https://doi.org/10.1126/science.abo0510))
+*  **megagut_pred:** CellTypist model from the all cells in Pan-GI study, includes 89 cell types (ref: [Oliver et al, 2024 (in press)])
+
 
 ### 3. `find_doublets`  
 
