@@ -119,11 +119,6 @@ This step requires the h5ad object from `add_metadata` step.
 * This pipeline currently doesn't support GeneFull matrices.
 * In the future, the user will be able to specify STARsolo matrix (Gene or GeneFull).
 
-### Modularise the pipeline
-
-* It is planned to separate this pipeline into mmultiple workflows (after gather_matrices, after run_qc…).
-* It will allow the pipeline to be run from any step by using outputs from different datasets by this pipeline.
-
 ### Add run_cellbender process
 
 * Current version of pipeline assumes that the CellBender outputs exist. 
