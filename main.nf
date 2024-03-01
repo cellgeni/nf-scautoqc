@@ -121,7 +121,7 @@ process integrate {
   """
 }
 
-workflow {
+workflow all {
   Channel.fromPath("${params.SAMPLEFILE}")
        .splitCsv (header: false) 
        .flatten()
@@ -139,3 +139,18 @@ workflow {
   integrate(add_metadata.out.obj, params.batch_key, params.covar_keys)
 }
 
+workflow after_qc {
+  Channel.fromPath("${params.SAMPLEFILE}")
+       .splitCsv (header: false) 
+       .flatten()
+       .set {samples}
+  Channel.fromPath("${params.postqc_path}/*.h5ad")
+       .flatten()
+       .set {objects}
+  Channel.fromPath("${params.scrublet_path}/*.csv")
+       .flatten()
+       .set {scrublets}
+  pool_all(samples.collect( sort: true ).map { it.join(',') },objects.collect( sort:true ).map { it.join(',') })
+  add_metadata(pool_all.out, scrublets.collect( sort: true).map { it.join(',') }, params.metadata)
+  integrate(add_metadata.out.obj, params.batch_key, params.covar_keys)
+}
