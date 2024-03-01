@@ -8,6 +8,7 @@ metadatafile=/path/to/metadata/file # comment out this line and remove the corre
 [[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
 
 nextflow run main.nf \
+  -entry all \
   --SAMPLEFILE $samplefile \
   --metadata $metadatafile \
   --ss_matrix Gene \
@@ -15,6 +16,5 @@ nextflow run main.nf \
   --cb_prefix /path/to/cellbender-results \
   --project_tag project1 \
   --batch_key sampleID \
-  --covar_keys  \
   --ansi-log false \
   -resume
