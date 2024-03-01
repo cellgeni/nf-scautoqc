@@ -92,8 +92,6 @@ my_parser.add_argument("--batch", default=None, help="batch key")
 my_parser.add_argument("--covar", default=None, help="categorical covariate keys")
 args = my_parser.parse_args()
 
-pooled_ad0 = sc.read(args.obj)
-
 arches_params = dict(
     n_layers=2,
     use_layer_norm="both",
@@ -103,9 +101,6 @@ arches_params = dict(
 )
 
 pooled_ad1 = sc.read(args.obj)
-
-if not args.covar == None:
-    args.covar = args.covar.split(',')
 
 pooled_ad1 = pooled_ad1[~pooled_ad1.obs.stringent_doublet].copy()
 
@@ -125,6 +120,7 @@ sc.pp.highly_variable_genes(
 scvi.model.SCVI.setup_anndata(
     pooled_ad1,
     batch_key=args.batch,
+    categorical_covariate_keys=
     continuous_covariate_keys=["log1p_n_counts", "percent_mito"],
 )
 
