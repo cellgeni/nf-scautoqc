@@ -139,7 +139,15 @@ This step requires the h5ad object from `add_metadata` step.
 
 ![](scautoqc-original-diagram.png)
 
-## Release notes
+## Changelog
+
+### v0.3.0
+* New workflow: after_qc
+  * It is now easier to work with the samples which has been processed with scAutoQC pipeline before. 
+* Improvements in nextflow pipeline and python scripts
+  * Created new RESUME script for afterqc workflow.
+  * integration.py should now work more efficiently.
+  * ss_matrix and covar_keys parameters have been removed (they will be considered for the future releases). 
 
 ### v0.2.2
 * Bug fixes
