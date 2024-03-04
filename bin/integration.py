@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 """Add metadata to pooled object
 
-Usage: sample_qc.py --obj pooled_obj.h5ad --covar
+Usage: sample_qc.py --obj pooled_obj.h5ad 
 
 Options:
   --obj        path of the pooled h5ad
   --batch      batch key
-  --covar      keys of categorical covariates
 """
 def run_mde(
     data,
@@ -89,7 +88,6 @@ import joblib
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--obj", default=None, help="path of the pooled h5ad")
 my_parser.add_argument("--batch", default=None, help="batch key")
-my_parser.add_argument("--covar", default=None, help="categorical covariate keys")
 args = my_parser.parse_args()
 
 arches_params = dict(
@@ -120,7 +118,6 @@ sc.pp.highly_variable_genes(
 scvi.model.SCVI.setup_anndata(
     pooled_ad1,
     batch_key=args.batch,
-    categorical_covariate_keys=
     continuous_covariate_keys=["log1p_n_counts", "percent_mito"],
 )
 

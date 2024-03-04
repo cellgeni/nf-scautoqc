@@ -108,7 +108,6 @@ process integrate {
   input:
   path(qc2_out)
   val(batch_key)
-  val(covar_keys)
 
   output:
   path("scautoqc_integrated.h5ad")
@@ -117,7 +116,7 @@ process integrate {
 
   script:
   """
-  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${batch_key} --covar ${covar_keys}
+  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${batch_key}
   """
 }
 
@@ -136,7 +135,7 @@ workflow all {
   find_doublets(run_qc.out.samp_obj)
   pool_all(run_qc.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') },run_qc.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
   add_metadata(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
-  integrate(add_metadata.out.obj, params.batch_key, params.covar_keys)
+  integrate(add_metadata.out.obj, params.batch_key)
 }
 
 workflow after_qc {
@@ -152,5 +151,5 @@ workflow after_qc {
        .set {scrublets}
   pool_all(samples.collect( sort: true ).map { it.join(',') },objects.collect( sort:true ).map { it.join(',') })
   add_metadata(pool_all.out, scrublets.collect( sort: true).map { it.join(',') }, params.metadata)
-  integrate(add_metadata.out.obj, params.batch_key, params.covar_keys)
+  integrate(add_metadata.out.obj, params.batch_key)
 }
