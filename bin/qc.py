@@ -58,14 +58,15 @@ def calculate_qc(ad, run_scrublet=True):
     """
     sk.calculate_qc(ad, log1p=False)
     sk.calculate_qc(ad, suffix="_raw", layer="raw", log1p=False)
-    sk.calculate_qc(ad, suffix="_spliced", layer="spliced", log1p=False)
-    sk.calculate_qc(ad, suffix="_unspliced", layer="unspliced", log1p=False)
     ad.obs["percent_soup"] = (1 - ad.obs["n_counts"] / ad.obs["n_counts_raw"]) * 100
-    ad.obs["percent_spliced"] = (
-        ad.obs["n_counts_spliced"]
-        / (ad.obs["n_counts_spliced"] + ad.obs["n_counts_unspliced"])
-        * 100
-    )
+    if not args.seq == 'single-nuc':
+        sk.calculate_qc(ad, suffix="_spliced", layer="spliced", log1p=False)
+        sk.calculate_qc(ad, suffix="_unspliced", layer="unspliced", log1p=False)
+        ad.obs["percent_spliced"] = (
+            ad.obs["n_counts_spliced"]
+            / (ad.obs["n_counts_spliced"] + ad.obs["n_counts_unspliced"])
+            * 100
+        )
     if run_scrublet:
         sk.run_scrublet(ad)
 
@@ -311,7 +312,18 @@ def main(args):
     if not args.qc_metrics == None:
         qc_metrics = args.qc_metrics.split(",")
     else:
-        qc_metrics = None
+        if args.seq == 'single-nuc':
+            qc_metrics = [
+                    "log1p_n_counts",
+                    "log1p_n_genes",
+                    "percent_mito",
+                    "percent_ribo",
+                    "percent_hb",
+                    "percent_top50",
+                    "percent_soup",
+                ]
+        else:
+            qc_metrics = None
     models = parse_model_option(args.models)
     clst_res = float(args.clst_res)
     min_frac = float(args.min_frac)
@@ -319,12 +331,6 @@ def main(args):
 
     input_h5ad = args.out_path 
     
-    # input_h5ad = os.path.join(
-    #     args.out_path, f"{sid}.gene_velo_cellbender.filtered.h5ad"
-    # )
-    # postqc_h5ad = os.path.join(
-    #     args.out_path, f"{sid}.gene_velo_cellbender.post_qc.h5ad"
-    # )
     if plot_only:
         input_h5ad = postqc_h5ad
 
@@ -393,6 +399,7 @@ if __name__ == "__main__":
     my_parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
     my_parser.add_argument("--out_path", default=None, help="path of the output files")
     my_parser.add_argument("--sample_id", default=None, help="sample id")
+    my_parser.add_argument("--seq", default=None, help="type of sequencing")
 
     args = my_parser.parse_args()
 

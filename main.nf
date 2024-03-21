@@ -17,7 +17,7 @@ process gather_matrices {
 
   script:
   """
-  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5}
+  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --seq ${params.seq_type}
   """
 }
 
@@ -35,7 +35,7 @@ process run_qc {
 
   script:
   """
-  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --models ${params.models} --sample_id ${samp} --out_path ${gath_out}
+  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --models ${params.models} --sample_id ${samp} --out_path ${gath_out} --seq ${params.seq_type}
   """
 }
 

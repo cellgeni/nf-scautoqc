@@ -13,6 +13,7 @@ nextflow run main.nf \
   --metadata $metadatafile \
   --ss_prefix /path/to/starsolo-results \
   --cb_prefix /path/to/cellbender-results \
+  --seq_type single-cell \
   --project_tag project1 \
   --batch_key sampleID \
   --ansi-log false \
