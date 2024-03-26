@@ -72,7 +72,7 @@ process pool_all {
 
   script:
   """
-  python ${baseDir}/bin/pool_all.py --samples ${samp} --objects ${qc_out}
+  python ${baseDir}/bin/pool_all.py --samples ${samp} --objects ${qc_out} --seq ${params.seq_type}
   """
 }
 

@@ -79,6 +79,7 @@ def run_QC(
     threshold=0.5,
     relabel_only=False,
     plot_only=False,
+    seq_type='single-cell'
 ):
     if qc_metrics is None:
         qc_metrics = [
@@ -113,16 +114,25 @@ def run_QC(
 
     mito_thresholds = [20, 50, 80]
 
+
     if not plot_only:
         for max_mito in mito_thresholds:
-            sk._pipeline.cellwise_qc(
-                ad,
+            if seq_type == 'single-cell':
                 metrics={
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
                     "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (50, 97.5, "log", "both", 0.1),
-                },
+                    }
+            else:
+                metrics={
+                    "n_counts": (1000, None, "log", "min_only", 0.1),
+                    "n_genes": (100, None, "log", "min_only", 0.1),
+                    "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
+                    }
+            sk._pipeline.cellwise_qc(
+                ad,
+                metrics,
                 cell_qc_key=f"good_qc_cluster_mito{max_mito}"
             )
             sk._pipeline.clusterwise_qc(
@@ -292,7 +302,7 @@ def parse_model_option(model_str):
     return models
 
 
-def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False):
+def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False, seq_type='single-cell'):
 
     qc_figs = run_QC(
         ad,
@@ -301,6 +311,7 @@ def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False):
         res=clst_res,
         threshold=min_frac,
         plot_only=plot_only,
+        seq_type=seq_type
     )
     return qc_figs
 
@@ -345,7 +356,7 @@ def main(args):
         ctp_prob_sfig,
         ctp_pred_ufig,
         qc_cluster_ufig,
-    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only)
+    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only, args.seq)
 
     # sid_qc_plot_dir = os.path.join(args.out_path, sid)
     # os.makedirs(sid_qc_plot_dir, exist_ok=True)

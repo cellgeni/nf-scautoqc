@@ -18,6 +18,7 @@ import argparse
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--samples", default=None, help="samples separated by comma")
 my_parser.add_argument("--objects", default=None, help="object paths separated by comma")
+my_parser.add_argument("--seq", default=None, help="type of sequencing")
 args = my_parser.parse_args()
 
 samples = args.samples.split(',')
@@ -42,31 +43,36 @@ pooled_ad = anndata.AnnData.concatenate(
 del ads1
 gc.collect()
 
-for suffix in ("", "_raw", "_spliced", "_unspliced"):
+if args.seq == 'single-cell':
+    suffixes = ("", "_raw", "_spliced", "_unspliced")
+else:
+    suffixes = ("", "_raw")
+
+for suffix in suffixes:
     pooled_ad.var[f"n_counts{suffix}"] = pooled_ad.var[
         [f"n_counts{suffix}-{sid}" for sid in samples]
     ].sum(axis=1)
 
-for suffix in ("", "_raw", "_spliced", "_unspliced"):
+for suffix in suffixes:
     pooled_ad.varm[f"n_counts{suffix}"] = pooled_ad.var[
         [f"n_counts{suffix}-{sid}" for sid in samples]
     ].values
 
-for suffix in ("", "_raw", "_spliced", "_unspliced"):
+for suffix in suffixes:
     for sid in samples:
         del pooled_ad.var[f"n_counts{suffix}-{sid}"]
 
-for suffix in ("", "_raw", "_spliced", "_unspliced"):
+for suffix in suffixes:
     pooled_ad.var[f"n_cells{suffix}"] = pooled_ad.var[
         [f"n_cells{suffix}-{sid}" for sid in samples]
     ].sum(axis=1)
 
-for suffix in ("", "_raw", "_spliced", "_unspliced"):
+for suffix in suffixes:
     pooled_ad.varm[f"n_cells{suffix}"] = pooled_ad.var[
         [f"n_cells{suffix}-{sid}" for sid in samples]
     ].values
 
-for suffix in ("", "_raw", "_spliced", "_unspliced"):
+for suffix in suffixes:
     for sid in samples:
         del pooled_ad.var[f"n_cells{suffix}-{sid}"]
 
