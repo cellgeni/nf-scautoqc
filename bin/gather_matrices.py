@@ -170,7 +170,7 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     )
     k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
     k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
-    if args.seq == 'single-nuc':
+    if args.ss_out == 'GeneFull':
         ad = anndata.AnnData(
             X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
             obs=cb_gene_filtered_ad.obs[k_cb].copy(),
@@ -235,7 +235,7 @@ if __name__ == '__main__':
     my_parser.add_argument("--cr_gene", default=None, help="path to 10x matrix filtered folder")
     my_parser.add_argument("--cr_velo", default=None, help="path to velocyto filtered folder")
     my_parser.add_argument("--cb_h5", default=None, help="path to cellbender h5")
-    my_parser.add_argument("--seq", default=None, help="type of sequencing")
+    my_parser.add_argument("--ss_out", default=None, help="starsolo output to use")
     args = my_parser.parse_args()
     try:
         if args.debug:

@@ -59,7 +59,7 @@ def calculate_qc(ad, run_scrublet=True):
     sk.calculate_qc(ad, log1p=False)
     sk.calculate_qc(ad, suffix="_raw", layer="raw", log1p=False)
     ad.obs["percent_soup"] = (1 - ad.obs["n_counts"] / ad.obs["n_counts_raw"]) * 100
-    if not args.seq == 'single-nuc':
+    if not args.ss_out == 'GeneFull':
         sk.calculate_qc(ad, suffix="_spliced", layer="spliced", log1p=False)
         sk.calculate_qc(ad, suffix="_unspliced", layer="unspliced", log1p=False)
         ad.obs["percent_spliced"] = (
@@ -79,7 +79,7 @@ def run_QC(
     threshold=0.5,
     relabel_only=False,
     plot_only=False,
-    seq_type='single-cell'
+    ss_out='Gene'
 ):
     if qc_metrics is None:
         qc_metrics = [
@@ -117,7 +117,7 @@ def run_QC(
 
     if not plot_only:
         for max_mito in mito_thresholds:
-            if seq_type == 'single-cell':
+            if ss_out == 'Gene':
                 metrics={
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
@@ -302,7 +302,7 @@ def parse_model_option(model_str):
     return models
 
 
-def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False, seq_type='single-cell'):
+def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False, ss_out='Gene'):
 
     qc_figs = run_QC(
         ad,
@@ -311,7 +311,7 @@ def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False, 
         res=clst_res,
         threshold=min_frac,
         plot_only=plot_only,
-        seq_type=seq_type
+        ss_out=ss_out
     )
     return qc_figs
 
@@ -323,7 +323,7 @@ def main(args):
     if not args.qc_metrics == None:
         qc_metrics = args.qc_metrics.split(",")
     else:
-        if args.seq == 'single-nuc':
+        if args.ss_out == 'GeneFull':
             qc_metrics = [
                     "log1p_n_counts",
                     "log1p_n_genes",
@@ -356,7 +356,7 @@ def main(args):
         ctp_prob_sfig,
         ctp_pred_ufig,
         qc_cluster_ufig,
-    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only, args.seq)
+    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only, args.ss_out)
 
     # sid_qc_plot_dir = os.path.join(args.out_path, sid)
     # os.makedirs(sid_qc_plot_dir, exist_ok=True)
@@ -410,7 +410,7 @@ if __name__ == "__main__":
     my_parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
     my_parser.add_argument("--out_path", default=None, help="path of the output files")
     my_parser.add_argument("--sample_id", default=None, help="sample id")
-    my_parser.add_argument("--seq", default=None, help="type of sequencing")
+    my_parser.add_argument("--ss_out", default=None, help="starsolo output to use")
 
     args = my_parser.parse_args()
 

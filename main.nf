@@ -17,7 +17,7 @@ process gather_matrices {
 
   script:
   """
-  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --seq ${params.seq_type}
+  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --ss_out ${params.ss_out}
   """
 }
 
@@ -35,7 +35,7 @@ process run_qc {
 
   script:
   """
-  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --models ${params.models} --sample_id ${samp} --out_path ${gath_out} --seq ${params.seq_type}
+  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --models ${params.models} --sample_id ${samp} --out_path ${gath_out} --ss_out ${params.ss_out}
   """
 }
 
@@ -72,7 +72,7 @@ process pool_all {
 
   script:
   """
-  python ${baseDir}/bin/pool_all.py --samples ${samp} --objects ${qc_out} --seq ${params.seq_type}
+  python ${baseDir}/bin/pool_all.py --samples ${samp} --objects ${qc_out} --ss_out ${params.ss_out}
   """
 }
 
@@ -126,7 +126,7 @@ workflow all {
        .flatten()
    .multiMap { it ->
            samp: it
-           cr_gene: "${params.ss_prefix}/${it}/output/Gene/filtered/"
+           cr_gene: "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
            cr_velo: "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
            cb_h5:   "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
        .set {samples}

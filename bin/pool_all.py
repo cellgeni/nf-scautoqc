@@ -18,7 +18,7 @@ import argparse
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--samples", default=None, help="samples separated by comma")
 my_parser.add_argument("--objects", default=None, help="object paths separated by comma")
-my_parser.add_argument("--seq", default=None, help="type of sequencing")
+my_parser.add_argument("--ss_out", default=None, help="type of sequencing")
 args = my_parser.parse_args()
 
 samples = args.samples.split(',')
@@ -43,7 +43,7 @@ pooled_ad = anndata.AnnData.concatenate(
 del ads1
 gc.collect()
 
-if args.seq == 'single-cell':
+if args.ss_out == 'Gene':
     suffixes = ("", "_raw", "_spliced", "_unspliced")
 else:
     suffixes = ("", "_raw")
