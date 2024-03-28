@@ -2,15 +2,12 @@
 
 set -euo pipefail
 
-samplefile=/path/to/sample/file
-metadatafile=/path/to/metadata/file # comment out this line and remove the corresponding line below if there is no metadata 
-
-[[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
+# remove the metadata line below if there is no metadata 
 
 nextflow run main.nf \
   -entry all \
-  --SAMPLEFILE $samplefile \
-  --metadata $metadatafile \
+  --SAMPLEFILE /path/to/sample/file \
+  --metadata /path/to/metadata/file \
   --ss_prefix /path/to/starsolo-results \
   --cb_prefix /path/to/cellbender-results \
   --ss_out Gene \

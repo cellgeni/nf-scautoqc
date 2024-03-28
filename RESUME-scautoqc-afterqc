@@ -2,20 +2,14 @@
 
 set -euo pipefail
 
-samplefile=/path/to/sample/file
-metadatafile=/path/to/metadata/file # comment out this line and remove the corresponding line below if there is no metadata 
-postqcpath=/path/to/postqc/objects
-scrubletpath=/path/to/scrublet/outputs
-
-
-[[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
+# remove the metadata line below if there is no metadata 
 
 nextflow run main.nf \
   -entry afterQC \
-  --SAMPLEFILE $samplefile \
-  --postqc_path $postqcpath \
-  --scrublet_path $scrubletpath \
-  --metadata $metadatafile \
+  --SAMPLEFILE /path/to/sample/file \
+  --postqc_path /path/to/postqc/objects \
+  --scrublet_path /path/to/scrublet/outputs \
+  --metadata /path/to/metadata/file \
   --project_tag project1 \
   --batch_key sampleID \
   --ansi-log false \
