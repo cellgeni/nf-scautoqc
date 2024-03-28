@@ -30,6 +30,7 @@ nextflow run main.nf \
   --metadata /path/to/metadata/file \
   --ss_prefix /path/to/starsolo-results \
   --cb_prefix /path/to/cellbender-results \
+  --ss_out Gene \         # to specify which STARsolo output folder to use (Gene or GeneFull)
   --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
   --batch_key sampleID \  # batch key to use in scVI integration
   --ansi-log false \
@@ -63,24 +64,27 @@ output 9: final h5ad object
 
 ### 1. `gather_matrices`  
 
-This step requires three inputs: 
-* STARsolo output folder named "Gene"
-* STARsolo output folder named "Velocyto"
-* Cellbender output in h5 format (if Cellbender output doesn't exist, change mode to cb+normal) (option to change mode will be added in the future)  
+The inputs for the first step are determined according to STARsolo output which is specificed to use `ss_out`:
+* By default, "Gene" folder is used (assuming the data is single-cell).
+* "GeneFull" folder is used if the data is single-nuc.
 
-`gather_matrices` step combines the matrices from three inputs into one h5ad object with four layers (raw, spliced, unspliced, ambiguous). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
+This step requires three inputs:
+  * STARsolo output folder named "Gene" (or "GeneFull")
+  * STARsolo output folder named "Velocyto" (ignored if "GeneFull")
+  * Cellbender output in h5 format (if Cellbender output doesn't exist, change mode to cb+normal) (option to change mode will be added in the future)  
+
+`gather_matrices` step combines the matrices from three inputs into one h5ad object with multiple layers: raw, spliced, unspliced, ambiguous (only raw layer is considered for "GeneFull" option is specified). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
 
 ### 2. `run_qc`
 
 This step requires the output of `gather_matrices` step which is the h5ad object with four layers.  
 
-`run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html). It applies the QC based on QC metrics, and run CellTypist based on four models which are specified below and defined as default in this pipeline:  
+`run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html). It applies the QC based on 8 QC metrics (log1p_n_counts, log1p_n_genes, percent_mito, percent_ribo, percent_hb, percent_top50, percent_soup, percent_spliced - last one is ignored if "GeneFull" option is specified), and run CellTypist based on four models which are specified below and defined as default in this pipeline:  
 *  **cecilia22_predH:** CellTypist model from the immune populations combined from 20 tissues of 18 studies, includes 32 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
 *  **cecilia22_predL:** CellTypist model from the immune sub-populations combined from 20 tissues of 18 studies, includes 98 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
 *  **elmentaite21_pred:** CellTypist model from the intestinal cells from fetal, pediatric (healthy and Crohn's disease) and adult human gut, includes 134 cell types (ref: [Elmentaite et al, 2021](https://doi.org/10.1038/s41586-021-03852-1))
 *  **suo22_pred:** CellTypist model from the stromal and immune populations from the human fetus, includes 138 cell types (ref: [Suo et al, 2022](https://doi.org/10.1126/science.abo0510))
 *  **megagut_pred:** CellTypist model from the all cells in Pan-GI study, includes 89 cell types (ref: [Oliver et al, 2024 (in press)])
-
 
 ### 3. `find_doublets`  
 
@@ -103,7 +107,7 @@ This step requires the h5ad output from `pool_all` and the scrublet csv outputs 
 ### 6. `integrate`  
 
 This step requires the h5ad object from `add_metadata` step.
-`integrate` step removes stringent doublets (doublet score higher than 0.3, and bh score lower than 0.05) applies scVI integration to all samples by using "sampleID" as a batch key, and "log1p_n_counts" and "percent_mito" columns as categorical covariates. The final integrated object is given as the output of all of this pipeline. The steps below are applied before running integration:  
+`integrate` step removes stringent doublets (doublet score higher than 0.3, and bh score lower than 0.05) applies scVI integration to all samples by using "sampleID" as a batch key (by default), and "log1p_n_counts" and "percent_mito" columns as categorical covariates. The final integrated object is given as the output of all of this pipeline. The steps below are applied before running integration:  
 * Stringent doublets are removed.  
 * 7500 higly variable genes are chosen.  
 * All cell cycle genes are removed.  
@@ -111,13 +115,6 @@ This step requires the h5ad object from `add_metadata` step.
 * The batch size is chosen as 256.
 
 ## Future plans
-
-### Add support for multiome and single-nucleus samples
-
-* nf-scautoqc currently uses "Gene" output folder from STARsolo.
-* For the analysis of multiome and single-nucleus samples, GeneFull output folder from STARsolo is preferred. This matrix includes reads from introns.
-* This pipeline currently doesn't support GeneFull matrices.
-* In the future, the user will be able to specify STARsolo matrix (Gene or GeneFull).
 
 ### Add run_cellbender process
 
@@ -141,8 +138,14 @@ This step requires the h5ad object from `add_metadata` step.
 
 ## Changelog
 
+### v0.4.0
+* Added support for single-nuc samples
+* Improvements in scripts
+  * integration.py now removes the columns which were created in previous steps
+  * RESUME scripts have been reorganised
+
 ### v0.3.0
-* New workflow: after_qc
+* <ins>**New workflow:**</ins> after_qc
   * It is now easier to work with the samples which has been processed with scAutoQC pipeline before. 
 * Improvements in nextflow pipeline and python scripts
   * Created new RESUME script for afterqc workflow.
