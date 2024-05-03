@@ -24,7 +24,7 @@ process gather_matrices {
 process run_qc {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/postqc_h5ad", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots/${samp}", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
 
   input:
   tuple val(samp), path(gath_out)
