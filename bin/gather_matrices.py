@@ -161,39 +161,66 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     logging.info("cr_gene_filtered_mtx done")
     cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
     logging.info("cr_velo_filtered_mtx done")
-    cb_gene_filtered_ad = read_cellbender(cb_filtered_h5)
-    logging.info("cb_filtered_h5 done")
 
-    common_cells = list(
-        set(cr_gene_filtered_ad.obs_names.tolist())
-        & set(cb_gene_filtered_ad.obs_names.tolist())
-    )
-    k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
-    k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
-    if args.ss_out == 'GeneFull':
-        ad = anndata.AnnData(
-            X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
-            obs=cb_gene_filtered_ad.obs[k_cb].copy(),
-            var=cb_gene_filtered_ad.var.copy(),
-            layers={
-                "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
-            }
-    )
+    if not cb_filtered_h5 == None: 
+        cb_gene_filtered_ad = read_cellbender(cb_filtered_h5)
+        logging.info("cb_filtered_h5 done")
+
+        common_cells = list(
+            set(cr_gene_filtered_ad.obs_names.tolist())
+            & set(cb_gene_filtered_ad.obs_names.tolist())
+        )
+        k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
+        k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
+        if args.ss_out == 'GeneFull':
+            ad = anndata.AnnData(
+                X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
+                obs=cb_gene_filtered_ad.obs[k_cb].copy(),
+                var=cb_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
+                }
+        )
+        else:
+            ad = anndata.AnnData(
+                X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
+                obs=cb_gene_filtered_ad.obs[k_cb].copy(),
+                var=cb_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
+                    "spliced": cr_velo_filtered_ad.X[np.where(k_cr)[0]],
+                    "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
+                    "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
+                }
+        )
+            for layer in ("spliced", "unspliced", "ambiguous"):
+                ad.layers[layer].eliminate_zeros()
+        return ad
     else:
-        ad = anndata.AnnData(
-            X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
-            obs=cb_gene_filtered_ad.obs[k_cb].copy(),
-            var=cb_gene_filtered_ad.var.copy(),
-            layers={
-                "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
-                "spliced": cr_velo_filtered_ad.X[np.where(k_cr)[0]],
-                "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
-                "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
-            }
-    )
-        for layer in ("spliced", "unspliced", "ambiguous"):
-            ad.layers[layer].eliminate_zeros()
-    return ad
+        if args.ss_out == 'GeneFull':
+            ad = anndata.AnnData(
+                X=cr_gene_filtered_ad.X,
+                obs=cr_gene_filtered_ad.obs.copy(),
+                var=cr_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X
+                }
+        )
+        else:
+            ad = anndata.AnnData(
+                X=cr_gene_filtered_ad.X,
+                obs=cr_gene_filtered_ad.obs.copy(),
+                var=cr_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X,
+                    "spliced": cr_velo_filtered_ad.X,
+                    "unspliced": cr_velo_filtered_ad.layers["unspliced"],
+                    "ambiguous": cr_velo_filtered_ad.layers["ambiguous"],
+                }
+        )
+            for layer in ("spliced", "unspliced", "ambiguous"):
+                ad.layers[layer].eliminate_zeros()
+        return ad
 
 
 def main(args):
@@ -208,8 +235,6 @@ def main(args):
         raise FileNotFoundError(cr_gene_filtered_mtx)
     if not os.path.exists(cr_velo_filtered_mtx):
         raise FileNotFoundError(cr_velo_filtered_mtx)
-    if not os.path.exists(cb_filtered_h5):
-        raise FileNotFoundError(cb_filtered_h5)
 
     if args.dry:
         print(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
@@ -234,7 +259,7 @@ if __name__ == '__main__':
     my_parser.add_argument("--force", default=None, help="force overwrite if output exists")
     my_parser.add_argument("--cr_gene", default=None, help="path to 10x matrix filtered folder")
     my_parser.add_argument("--cr_velo", default=None, help="path to velocyto filtered folder")
-    my_parser.add_argument("--cb_h5", default=None, help="path to cellbender h5")
+    my_parser.add_argument("--cb_h5", default=None, const=None, nargs='?', help="path to cellbender h5")
     my_parser.add_argument("--ss_out", default=None, help="starsolo output to use")
     args = my_parser.parse_args()
     try:
