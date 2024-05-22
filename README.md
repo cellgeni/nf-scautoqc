@@ -20,12 +20,49 @@ nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichl
 
 ## Workflow
 
-The default version of the pipeline runs all the steps shown the diagram below. This pipeline can use the steps after `run_qc` and `find_doublets` if the entry is used as `after_qc` and this requires different parameters. All parameters needed for both case are already specified in RESUME scripts, and also can be found below:
+![](scautoqc-diagram.png)  
+This pipeline produces 10 outputs, each were detailed in their corresponding steps:
+* ***[output 1]:*** h5ad object with different layers
+* ***[output 2]:*** h5ad object with QC metrics
+* ***[output 3]:*** QC plots for each sample
+* ***[output 4]:*** CSV file with scrublet scores
+* ***[output 5]:*** pooled h5ad object with all the samples
+* ***[output 6]:*** pooled h5ad object with metadata
+* ***[output 7]:*** QC plots
+* ***[output 8]:*** CSV with QC metrics for each sample
+* ***[output 9]:*** final integrated h5ad object
+* ***[output 10]:*** ELBO plot from scVI training
+
+<img align="right" src="workflow_modes.png">
+
+<!-- ![](workflow_modes.png)   -->
+The default version of the pipeline runs all the steps shown the diagram above. This pipeline has three run modes as shown on the right:
+* `all`: runs all steps (1-2-3-4-5-6)
+* `only_qc`: runs the steps until pooling including doublet finding (1-2-3)
+* `after_qc`: runs the steps starting from pooling (4-5-6)
+
+
+The parameters needed for all run modes are already specified in different RESUME scripts, and also can be found below:
 
 ```
 # to run all the steps
 nextflow run main.nf \
-  -entry all \            # to run all steps or steps after qc
+  -entry all \            # to choose run mode
+  --SAMPLEFILE /path/to/sample/file \
+  --metadata /path/to/metadata/file \
+  --ss_prefix /path/to/starsolo-results \
+  --cb_prefix /path/to/cellbender-results \
+  --ss_out Gene \         # to specify which STARsolo output folder to use (Gene or GeneFull)
+  --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
+  --batch_key sampleID \  # batch key to use in scVI integration
+  --ansi-log false \
+  -resume
+```
+
+```
+# to run all the steps before pooling
+nextflow run main.nf \
+  -entry only_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
   --ss_prefix /path/to/starsolo-results \
@@ -40,7 +77,7 @@ nextflow run main.nf \
 ```
 # to run after qc steps 
 nextflow run main.nf \
-  -entry afterQC \
+  -entry after_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --postqc_path /path/to/postqc/objects \
   --scrublet_path /path/to/scrublet/csvs \
@@ -50,17 +87,6 @@ nextflow run main.nf \
   --ansi-log false \
   -resume
 ```
-
-![](scautoqc-diagram.png)
-output 1: h5ad object with four layers  
-output 2: h5ad object with qc metrics  
-output 3: QC plots  
-output 4: CSV of scrublet scores  
-output 5: pooled h5ad object  
-output 6: pooled h5ad object with metadata  
-output 7: QC plots  
-output 8: CSV with percentages of the cells passed QC  
-output 9: final h5ad object
 
 ### 1. `gather_matrices`  
 
@@ -73,18 +99,35 @@ This step requires three inputs:
   * STARsolo output folder named "Velocyto" (ignored if "GeneFull")
   * Cellbender output in h5 format (if Cellbender output doesn't exist, change mode to cb+normal) (option to change mode will be added in the future)  
 
-`gather_matrices` step combines the matrices from three inputs into one h5ad object with multiple layers: raw, spliced, unspliced, ambiguous (only raw layer is considered for "GeneFull" option is specified). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
+`gather_matrices` step combines the matrices from three inputs into one h5ad object with multiple layers for each sample: raw, spliced, unspliced, ambiguous (only raw layer is used if "GeneFull" mode is specified). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
+
+This step produces:  
+* ***[output 1]:*** h5ad object with different layers
 
 ### 2. `run_qc`
 
-This step requires the output of `gather_matrices` step which is the h5ad object with four layers.  
+This step requires the output of `gather_matrices` step which is the h5ad object with one or more layers.  
 
-`run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html). It applies the QC based on 8 QC metrics (log1p_n_counts, log1p_n_genes, percent_mito, percent_ribo, percent_hb, percent_top50, percent_soup, percent_spliced - last one is ignored if "GeneFull" option is specified), and run CellTypist based on four models which are specified below and defined as default in this pipeline:  
+`run_qc` step uses main automatic QC workflow which is summarised [here](https://teichlab.github.io/sctk/notebooks/automatic_qc.html). It applies the QC based on 8 QC metrics (log1p_n_counts, log1p_n_genes, percent_mito, percent_ribo, percent_hb, percent_top50, percent_soup, percent_spliced - last one is ignored if "GeneFull" mode is specified), and run CellTypist based on four models which are specified below and defined as default in this pipeline (Due to the nature of this study, only gut-related models were used):  
 *  **cecilia22_predH:** CellTypist model from the immune populations combined from 20 tissues of 18 studies, includes 32 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
 *  **cecilia22_predL:** CellTypist model from the immune sub-populations combined from 20 tissues of 18 studies, includes 98 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
 *  **elmentaite21_pred:** CellTypist model from the intestinal cells from fetal, pediatric (healthy and Crohn's disease) and adult human gut, includes 134 cell types (ref: [Elmentaite et al, 2021](https://doi.org/10.1038/s41586-021-03852-1))
 *  **suo22_pred:** CellTypist model from the stromal and immune populations from the human fetus, includes 138 cell types (ref: [Suo et al, 2022](https://doi.org/10.1126/science.abo0510))
-*  **megagut_pred:** CellTypist model from the all cells in Pan-GI study, includes 89 cell types (ref: [Oliver et al, 2024 (in press)])
+*  **megagut_pred:** CellTypist model from the all cells in Pan-GI study, includes 89 cell types (ref: [Oliver et al, 2024 (in press)]).
+
+This step produces [output 2] and [output 3]: 
+* ***[output 2]:*** an h5ad object with QC metrics, "good_qc_cluster" and "pass_auto_filter" columns tested with different mitochondrial thresholds,  
+* ***[output 3]:*** QC plots for each sample:  
+  * UMAP plots:
+    * coloured by each metric and good_qc_cluster and qc_cluster
+    * coloured by probability scores, uncertain and predicted labels using the first model (cecilia22_predH)
+    * coloured by good_qc_cluster, pass_auto_filter, pass_default and qc_cluster
+  * violin plot for each metric grouped by QC clusters  
+  * scatter plots for n_counts vs each metric:
+    * coloured by good_qc_cluster
+    * coloured by pass_default_filter
+    * coloured by pass_auto_filter
+    * coloured by the probability of a CellTypist prediction using the first model (cecilia22_predH)
 
 ### 3. `find_doublets`  
 
@@ -92,17 +135,30 @@ This step requires the output of `run_qc` step which is the h5ad object with pos
 
 `find_doublets` step runs [scrublet](https://github.com/swolock/scrublet) on the h5ad object and annotates the doublet scores to cells. This step runs simultaneously with step 4 for efficiency.
 
+This step produces:  
+* ***[output 4]:*** CSV file with scrublet scores for each cell barcode for each sample.
+
 ### 4. `pool_all`  
 
 This step requires the outputs of `run_qc` step from all the samples.  
 
 `pool_all` step combines all of the objects produced in `run_qc` step in a single h5ad object.
 
+This step produces:
+* ***[output 5]:*** a concatenated h5ad object with all the samples
+
 ### 5. `add_metadata`  
 
 This step requires the h5ad output from `pool_all` and the scrublet csv outputs from `find_doublets` steps.  
 
-`add_metadata` step gives scores of different QC metrics of each sample, and adds scrublet scores (and the cell metadata according to samples if provided) to the h5ad object. (QC-related plots are generated but are not copied to output directory, this will be fixed in the future.)  
+`add_metadata` step gives scores of different QC metrics of each sample, and adds scrublet scores (and the cell metadata according to samples if provided) to the h5ad object. 
+
+This step produces [output 6], [output 7], [output 8]:
+* ***[output 6]:*** pooled h5ad object with metadata
+* ***[output 7]:*** QC plots: 
+  * scatter plot of total_cell_count vs passQC_count80 coloured by each sample
+  * histogram of log of samples that have passQC_count20, passQC_count50 and passQC_count80 columns True
+* ***[output 8]:*** CSV with percentages of the cells passed QC for each test
 
 ### 6. `integrate`  
 
@@ -114,18 +170,22 @@ This step requires the h5ad object from `add_metadata` step.
 * The dimensionality of the latent space is chosen as 20.
 * The batch size is chosen as 256.
 
+This step produces:
+* ***[output 9]:*** final integrated h5ad object
+* ***[output 10]:*** ELBO plot from scVI training
+
 ## Future plans
 
 ### Add run_cellbender process
 
-* Current version of pipeline assumes that the CellBender outputs exist. 
-* This addition will allow the pipeline to run CellBender if the inputs do not exist.
+* Current version of pipeline assumes that the Cellbender outputs exist. 
+* This addition will allow the pipeline to run Cellbender if the inputs do not exist.
 
 ### Expand input options
 
 * Current version of pipeline is able to take STARsolo outputs only.
 * This expansion will allow user to specify the input type whether it is Cellranger or STARsolo input.
-* For Cellranger inputs, the pipeline will be able to run Velocyto and CellBender without specifying anything additionally.
+* For Cellranger inputs, the pipeline will be able to run Velocyto and Cellbender without specifying anything additionally.
 
 ### Smart memory allocation
 
@@ -138,6 +198,20 @@ This step requires the h5ad object from `add_metadata` step.
 
 ## Changelog
 
+### v0.5.0
+* <ins>**New workflow:**</ins> `only_qc`
+  * It is now easier to run the pipeline until the pooling step. This can be used to process different sets of samples in different times, then all the outputs from this workflow  can be used together with `after_qc` mode.
+* Improvements and changes in scripts:
+  * It is now possible to run the pipeline without Cellbender output, STARsolo output is used only in this case.
+  * Removing metadata columns in integration.py reverted back
+  * New RESUME scripts have been added
+  * `after_qc` workflow can now use the samples in the sample list only rather than all the objects in the folder.
+* Updates in README
+  * The workflow diagram has been recreated.
+  * The workflow modes have been described with a new figure.
+  * Outputs from each step have been described in detail.
+  * Text in some steps were revised.
+
 ### v0.4.0
 * Added support for single-nuc samples
 * Improvements in scripts
@@ -145,7 +219,7 @@ This step requires the h5ad object from `add_metadata` step.
   * RESUME scripts have been reorganised
 
 ### v0.3.0
-* <ins>**New workflow:**</ins> after_qc
+* <ins>**New workflow:**</ins> `after_qc`
   * It is now easier to work with the samples which has been processed with scAutoQC pipeline before. 
 * Improvements in nextflow pipeline and python scripts
   * Created new RESUME script for afterqc workflow.
