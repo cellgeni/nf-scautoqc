@@ -5,7 +5,7 @@ set -euo pipefail
 # remove the metadata line below if there is no metadata 
 
 nextflow run main.nf \
-  -entry afterQC \
+  -entry after_qc \
   --SAMPLEFILE /path/to/sample/file \
   --postqc_path /path/to/postqc/objects \
   --scrublet_path /path/to/scrublet/outputs \
