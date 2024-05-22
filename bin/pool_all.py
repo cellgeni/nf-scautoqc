@@ -24,6 +24,9 @@ args = my_parser.parse_args()
 samples = args.samples.split(',')
 objects = args.objects.split(',')
 
+if len(samples) != len(objects):
+    objects = [i for i in objects if i.startswith(tuple(samples))]
+
 ads = []
 for obj in objects:
     ads.append(sc.read(obj))
