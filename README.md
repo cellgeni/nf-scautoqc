@@ -7,14 +7,15 @@ nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichl
 ## Files:
 * `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
 * `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
-* `RESUME-scautoqc-all` - an example run script that executes the whole pipeline, it has four hardcoded argument: `/path/to/sample/file`, `/path/to/starsolo-results`, `/path/to/cellbender-results`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
-* `RESUME-scautoqc-afterqc` - an example run script that executes the pipeline after run_qc and find_doublets steps, it has four hardcoded argument: `/path/to/sample/file`, `/path/to/postqc/objects`, `/path/to/scrublet/csvs`, (optional: `/path/to/metadata/file`) that need to be changed based on your local set up.
-* `bin/gather_matrices.py` - a Python script that gathers matrices from STARsolo, Velocyto and Cellbender outputs.
-* `bin/qc.py` - a Python script that runs automatic QC workflow.
-* `bin/flag_doublet.py` - a Python script that runs scrublet to find doublets.
-* `bin/pool_all.py` - a Python script that combines all of the output objects after QC step.
-* `bin/add_scrublet_meta.py` - a Python script that adds scrublet scores (and metadata if available).
-* `bin/integration.py` - a Python script that runs scVI integration.
+* `RESUME-scautoqc-all` - an example run script that executes the whole pipeline.
+* `RESUME-scautoqc-afterqc` - an example run script that executes the pipeline after run_qc and find_doublets steps.
+* `RESUME-scautoqc-onlyqc` - an example run script that executes the pipeline after until pooling step.
+* `bin/gather_matrices.py` - a Python script that gathers matrices from STARsolo, Velocyto and Cellbender outputs (used in step 1).
+* `bin/qc.py` - a Python script that runs automatic QC workflow (used in step 2).
+* `bin/flag_doublet.py` - a Python script that runs scrublet to find doublets (used in step 3).
+* `bin/pool_all.py` - a Python script that combines all of the output objects after QC step (used in step 4).
+* `bin/add_scrublet_meta.py` - a Python script that adds scrublet scores (and metadata if available) (used in step 5).
+* `bin/integration.py` - a Python script that runs scVI integration (used in step 6).
 * `genes_list/` - a folder that includes cell cycle, immunoglobulin and T cell receptor genes.
 * `Dockerfile` - a dockerfile to reproduce the environment used to run the pipeline.
 
@@ -44,6 +45,11 @@ The default version of the pipeline runs all the steps shown the diagram above. 
 
 The parameters needed for all run modes are already specified in different RESUME scripts, and also can be found below:
 
+<details>
+
+<summary>Workflow: all</summary>
+
+
 ```
 # to run all the steps
 nextflow run main.nf \
@@ -58,6 +64,12 @@ nextflow run main.nf \
   --ansi-log false \
   -resume
 ```
+</details>
+
+
+<details>
+
+<summary>Workflow: only_qc</summary>
 
 ```
 # to run all the steps before pooling
@@ -74,6 +86,13 @@ nextflow run main.nf \
   -resume
 ```
 
+</details>
+
+
+<details>
+
+<summary>Workflow: after_qc</summary>
+
 ```
 # to run after qc steps 
 nextflow run main.nf \
@@ -88,6 +107,9 @@ nextflow run main.nf \
   -resume
 ```
 
+</details>
+
+
 ### 1. `gather_matrices`  
 
 The inputs for the first step are determined according to STARsolo output which is specificed to use `ss_out`:
@@ -97,7 +119,7 @@ The inputs for the first step are determined according to STARsolo output which 
 This step requires three inputs:
   * STARsolo output folder named "Gene" (or "GeneFull")
   * STARsolo output folder named "Velocyto" (ignored if "GeneFull")
-  * Cellbender output in h5 format (if Cellbender output doesn't exist, change mode to cb+normal) (option to change mode will be added in the future)  
+  * Cellbender output in h5 format (if not provided, STARsolo outputs will be used only) (option to change mode will be added in the future)  
 
 `gather_matrices` step combines the matrices from three inputs into one h5ad object with multiple layers for each sample: raw, spliced, unspliced, ambiguous (only raw layer is used if "GeneFull" mode is specified). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
 
@@ -133,7 +155,7 @@ This step produces [output 2] and [output 3]:
 
 This step requires the output of `run_qc` step which is the h5ad object with postqc columns.  
 
-`find_doublets` step runs [scrublet](https://github.com/swolock/scrublet) on the h5ad object and annotates the doublet scores to cells. This step runs simultaneously with step 4 for efficiency.
+`find_doublets` step runs [scrublet](https://github.com/swolock/scrublet) on the h5ad object and annotates the doublet scores to cells. This step runs in parallel with step 4 for efficiency.
 
 This step produces:  
 * ***[output 4]:*** CSV file with scrublet scores for each cell barcode for each sample.
@@ -151,7 +173,7 @@ This step produces:
 
 This step requires the h5ad output from `pool_all` and the scrublet csv outputs from `find_doublets` steps.  
 
-`add_metadata` step gives scores of different QC metrics of each sample, and adds scrublet scores (and the cell metadata according to samples if provided) to the h5ad object. 
+`add_metadata` step gives scores of different QC metrics of each sample, and adds scrublet scores (and the cell metadata according to samples if provided) to the h5ad object. This step also removes the samples with bad QC scores (passQC_frac80 lower than 0.1 and passQC_count80 lower than 100).
 
 This step produces [output 6], [output 7], [output 8]:
 * ***[output 6]:*** pooled h5ad object with metadata
@@ -163,9 +185,9 @@ This step produces [output 6], [output 7], [output 8]:
 ### 6. `integrate`  
 
 This step requires the h5ad object from `add_metadata` step.
-`integrate` step removes stringent doublets (doublet score higher than 0.3, and bh score lower than 0.05) applies scVI integration to all samples by using "sampleID" as a batch key (by default), and "log1p_n_counts" and "percent_mito" columns as categorical covariates. The final integrated object is given as the output of all of this pipeline. The steps below are applied before running integration:  
-* Stringent doublets are removed.  
-* 7500 higly variable genes are chosen.  
+`integrate` step removes stringent doublets applies scVI integration to all samples by using "sampleID" as a batch key (by default), and "log1p_n_counts" and "percent_mito" columns as categorical covariates. The final integrated object is given as the output of all of this pipeline. The steps below are applied before running integration:  
+* Stringent doublets (cells with doublet score higher than 0.3, and bh score lower than 0.05) are removed.  
+* 7500 highly variable genes are chosen.  
 * All cell cycle genes are removed.  
 * The dimensionality of the latent space is chosen as 20.
 * The batch size is chosen as 256.
@@ -184,8 +206,8 @@ This step produces:
 ### Expand input options
 
 * Current version of pipeline is able to take STARsolo outputs only.
-* This expansion will allow user to specify the input type whether it is Cellranger or STARsolo input.
-* For Cellranger inputs, the pipeline will be able to run Velocyto and Cellbender without specifying anything additionally.
+* This expansion will allow user to specify the input type whether it is Cell Ranger or STARsolo input.
+* For Cell Ranger inputs, the pipeline will be able to run Velocyto and Cellbender without specifying anything additionally.
 
 ### Smart memory allocation
 
@@ -200,12 +222,15 @@ This step produces:
 
 ### v0.5.0
 * <ins>**New workflow:**</ins> `only_qc`
-  * It is now easier to run the pipeline until the pooling step. This can be used to process different sets of samples in different times, then all the outputs from this workflow  can be used together with `after_qc` mode.
+  * It is now easier to run the pipeline until the pooling step. 
+  * This can be used to process different sets of samples in different times, then all the outputs from this workflow  can be used together with `after_qc` mode.
 * Improvements and changes in scripts:
   * It is now possible to run the pipeline without Cellbender output, STARsolo output is used only in this case.
-  * Removing metadata columns in integration.py reverted back
+  * Removing metadata columns in integration.py was reverted back
   * New RESUME scripts have been added
   * `after_qc` workflow can now use the samples in the sample list only rather than all the objects in the folder.
+  * Reports folder is now named similar to the results folder.
+  * Outputting plots in `run_qc` step now works as expected.
 * Updates in README
   * The workflow diagram has been recreated.
   * The workflow modes have been described with a new figure.
