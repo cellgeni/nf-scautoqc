@@ -2,9 +2,18 @@
 
 nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichlab.github.io/sctk/notebooks/automatic_qc.html) used in Oliver et al, 2024. 
 
-## Contents:
+## How to run:
+
+The recommended way to use nextflow is to run it in a screen session. These steps can be directly used in Sanger's FARM, but you can modify each step according to the environment you're working on or the job scheduler your HPC uses:
+
+1. Start a screen session: `screen -S nf_run1`
+2. Start a small interactive job for nextflow: `bsub -G cellgeni -n1 -R"span[hosts=1]" -Is -q long -R"select[mem>2000] rusage[mem=2000]" -M2000 bash`
+3. Modify one of RESUME scripts (pre-made Nextflow run scripts)
+4. Run the RESUME scripts you modified: `./RESUME-scautoqc-all`
+5. You can leave your screen session and let it run in the background: `Ctrl+A, D`
 
 ## Files:
+
 * `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
 * `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
 * `RESUME-scautoqc-all` - an example run script that executes the whole pipeline.
