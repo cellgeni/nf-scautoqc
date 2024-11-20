@@ -1,6 +1,6 @@
 # nf-scautoqc
 
-nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichlab.github.io/sctk/notebooks/automatic_qc.html) used in Oliver et al, 2024. 
+nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichlab.github.io/sctk/notebooks/automatic_qc.html) used in [Oliver et al, 2024](https://doi.org/10.1038/s41586-024-07571-1). 
 
 ## How to run:
 
