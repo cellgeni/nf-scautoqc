@@ -168,3 +168,24 @@ workflow after_qc {
   add_metadata(pool_all.out, scrublets.collect( sort: true).map { it.join(',') }, params.metadata)
   integrate(add_metadata.out.obj, params.batch_key)
 }
+
+workflow until_integrate {
+  Channel.fromPath("${params.SAMPLEFILE}")
+       .splitCsv (header: false) 
+       .flatten()
+   .multiMap { it ->
+           samp: it
+           cr_gene: "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
+           cr_velo: "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
+           cb_h5:   "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
+       .set {samples}
+  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
+  run_qc(gather_matrices.out.obj)
+  find_doublets(run_qc.out.samp_obj)
+  pool_all(run_qc.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') },run_qc.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
+  add_metadata(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
+}
+
+workflow only_integrate {
+  integrate(params.path_for_scvi, params.batch_key)
+}

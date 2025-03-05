@@ -4,7 +4,7 @@ set -euo pipefail
 
 # remove the metadata line below if there is no metadata 
 
-nextflow run main.nf \
+nextflow run cellgeni/nf-scautoqc -r main \
   -entry all \
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \

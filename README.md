@@ -30,26 +30,27 @@ The recommended way to use nextflow is to run it in a screen session. These step
 
 ## Workflow
 
-![](scautoqc-diagram.png)  
+![](scautoqc-diagram-light.png#gh-light-mode-only)
+![](scautoqc-diagram-dark.png#gh-dark-mode-only)  
 This pipeline produces 10 outputs, each were detailed in their corresponding steps:
-* ***[output 1]:*** h5ad object with different layers
-* ***[output 2]:*** h5ad object with QC metrics
-* ***[output 3]:*** QC plots for each sample
-* ***[output 4]:*** CSV file with scrublet scores
-* ***[output 5]:*** pooled h5ad object with all the samples
-* ***[output 6]:*** pooled h5ad object with metadata
-* ***[output 7]:*** QC plots
-* ***[output 8]:*** CSV with QC metrics for each sample
-* ***[output 9]:*** final integrated h5ad object
-* ***[output 10]:*** ELBO plot from scVI training
+* ***[output 1]:*** h5ad objects with different layers `1_gathered_objects/`
+* ***[output 2]:*** h5ad objects with QC metrics `2_qc_objects/`
+* ***[output 3]:*** QC plots for each sample `2_qc_plots_individual/`
+* ***[output 4]:*** CSV files with scrublet scores `3_doublet_scores/`
+* ***[output 5]:*** pooled h5ad object with all the samples `scautoqc_pooled.h5ad`
+* ***[output 6]:*** pooled h5ad object with metadata `scautoqc_pooled_doubletflagged_metaadded.h5ad`
+* ***[output 7]:*** QC plots `5_qc_plots_overall/`
+* ***[output 8]:*** CSV with QC metrics for each sample `sample_passqc_df.csv`
+* ***[output 9]:*** final integrated h5ad object `scautoqc_integrated.h5ad`
+* ***[output 10]:*** ELBO plot from scVI training `5_qc_plots_overall/`
 
-<img align="right" src="workflow_modes.png">
-
-<!-- ![](workflow_modes.png)   -->
+![](workflow_modes.png)  
 The default version of the pipeline runs all the steps shown the diagram above. This pipeline has three run modes as shown on the right:
 * `all`: runs all steps (1-2-3-4-5-6)
 * `only_qc`: runs the steps until pooling including doublet finding (1-2-3)
 * `after_qc`: runs the steps starting from pooling (4-5-6)
+* `until_integrate`: runs the steps until integration (1-2-3-4-5)
+* `only_integrate`: runs the integration step only (6)
 
 
 The parameters needed for all run modes are already specified in different RESUME scripts, and also can be found below:
@@ -58,10 +59,9 @@ The parameters needed for all run modes are already specified in different RESUM
 
 <summary>Workflow: all</summary>
 
-
 ```
 # to run all the steps
-nextflow run main.nf \
+nextflow run cellgeni/nf-scautoqc -r main \
   -entry all \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -82,7 +82,7 @@ nextflow run main.nf \
 
 ```
 # to run all the steps before pooling
-nextflow run main.nf \
+nextflow run cellgeni/nf-scautoqc -r main \
   -entry only_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -104,12 +104,50 @@ nextflow run main.nf \
 
 ```
 # to run after qc steps 
-nextflow run main.nf \
+nextflow run cellgeni/nf-scautoqc -r main \
   -entry after_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --postqc_path /path/to/postqc/objects \
   --scrublet_path /path/to/scrublet/csvs \
   --metadata /path/to/metadata/file \
+  --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
+  --batch_key sampleID \  # batch key to use in scVI integration
+  --ansi-log false \
+  -resume
+```
+
+</details>
+
+
+<details>
+
+<summary>Workflow: until_integrate</summary>
+
+```
+# to run steps until integration
+nextflow run cellgeni/nf-scautoqc -r main \
+  -entry until_integrate \            # to choose run mode
+  --SAMPLEFILE /path/to/sample/file \
+  --metadata /path/to/metadata/file \
+  --ss_prefix /path/to/starsolo-results \
+  --cb_prefix /path/to/cellbender-results \
+  --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
+  --ansi-log false \
+  -resume
+```
+
+</details>
+
+
+<details>
+
+<summary>Workflow: only_integrate</summary>
+
+```
+# to run steps until integration
+nextflow run cellgeni/nf-scautoqc -r main \
+  -entry only_integrate \            # to choose run mode
+  --path_for_scvi /path/to/object/to/integrate \
   --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
   --batch_key sampleID \  # batch key to use in scVI integration
   --ansi-log false \
@@ -144,7 +182,7 @@ This step requires the output of `gather_matrices` step which is the h5ad object
 *  **cecilia22_predL:** CellTypist model from the immune sub-populations combined from 20 tissues of 18 studies, includes 98 cell types (ref: [Domínguez-Conde et al, 2022](https://doi.org/10.1126/science.abl5197))
 *  **elmentaite21_pred:** CellTypist model from the intestinal cells from fetal, pediatric (healthy and Crohn's disease) and adult human gut, includes 134 cell types (ref: [Elmentaite et al, 2021](https://doi.org/10.1038/s41586-021-03852-1))
 *  **suo22_pred:** CellTypist model from the stromal and immune populations from the human fetus, includes 138 cell types (ref: [Suo et al, 2022](https://doi.org/10.1126/science.abo0510))
-*  **megagut_pred:** CellTypist model from the all cells in Pan-GI study, includes 89 cell types (ref: [Oliver et al, 2024 (in press)]).
+*  **megagut_pred:** CellTypist model from the all cells in Pan-GI study, includes 89 cell types (ref: [Oliver et al, 2024](https://doi.org/10.1038/s41586-024-07571-1)).
 
 This step produces [output 2] and [output 3]: 
 * ***[output 2]:*** an h5ad object with QC metrics, "good_qc_cluster" and "pass_auto_filter" columns tested with different mitochondrial thresholds,  

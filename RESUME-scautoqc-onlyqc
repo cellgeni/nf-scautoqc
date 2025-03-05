@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-nextflow run main.nf \
+nextflow run cellgeni/nf-scautoqc -r main \
   -entry only_qc \
   --SAMPLEFILE /path/to/sample/file \
   --ss_prefix /path/to/starsolo-results \

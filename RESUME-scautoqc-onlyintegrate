@@ -5,11 +5,8 @@ set -euo pipefail
 # remove the metadata line below if there is no metadata 
 
 nextflow run cellgeni/nf-scautoqc -r main \
-  -entry after_qc \
-  --SAMPLEFILE /path/to/sample/file \
-  --postqc_path /path/to/postqc/objects \
-  --scrublet_path /path/to/scrublet/outputs \
-  --metadata /path/to/metadata/file \
+  -entry only_integrate \
+  --path_for_scvi /path/to/object/to/integrate \
   --project_tag project1 \
   --batch_key sampleID \
   --ansi-log false \

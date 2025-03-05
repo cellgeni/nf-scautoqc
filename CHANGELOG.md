@@ -1,6 +1,14 @@
 ## Changelog
 
-### v0.5.0
+### 25-064
+* Added two new workflows:
+  * `until_integrate` workflow makes it easier to run the steps until integration (1-2-3-4-5)
+  * `only_integrate` workflow makes it easier to run the integration step only (6)
+* Improvements and changes in scripts:
+  * Folder names in the outputs were renamed.
+
+
+### 24-143
 * <ins>**New workflow:**</ins> `only_qc`
   * It is now easier to run the pipeline until the pooling step. 
   * This can be used to process different sets of samples in different times, then all the outputs from this workflow  can be used together with `after_qc` mode.
@@ -11,19 +19,14 @@
   * `after_qc` workflow can now use the samples in the sample list only rather than all the objects in the folder.
   * Reports folder is now named similar to the results folder.
   * Outputting plots in `run_qc` step now works as expected.
-* Updates in README
-  * The workflow diagram has been recreated.
-  * The workflow modes have been described with a new figure.
-  * Outputs from each step have been described in detail.
-  * Text in some steps were revised.
 
-### v0.4.0
+### 24-088
 * Added support for single-nuc samples
 * Improvements in scripts
   * integration.py now removes the columns which were created in previous steps
   * RESUME scripts have been reorganised
 
-### v0.3.0
+### 24-064
 * <ins>**New workflow:**</ins> `after_qc`
   * It is now easier to work with the samples which has been processed with scAutoQC pipeline before. 
 * Improvements in nextflow pipeline and python scripts
@@ -31,13 +34,13 @@
   * integration.py should now work more efficiently.
   * ss_matrix and covar_keys parameters have been removed (they will be considered for the future releases). 
 
-### v0.2.2
+### 24-060
 * Bug fixes
 
-### v0.2.1
+### 24-059
 * Typo fix
 
-### v0.2.0
+### 24-058
 * Improvements in python scripts
   * Changed output filenames in all scripts
   * gather_matrices.py
@@ -58,5 +61,5 @@
   * added covar_keys parameter to specify the columns from cell metadata for scVI integration (no default)
 * Updated workflow figure in README.md
 
-### v0.1.0
+### 24-050
 * First release
