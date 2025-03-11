@@ -4,7 +4,7 @@ nextflow.enable.dsl=2
 
 process gather_matrices {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/gathered_h5ad", mode: 'copy', saveAs: {filename -> "${samp}.${filename}"}
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/1_gathered_objects", mode: 'copy', saveAs: {filename -> "${samp}.${filename}"}
 
   input:
   val(samp)
@@ -23,8 +23,8 @@ process gather_matrices {
 
 process run_qc {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/postqc_h5ad", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_plots_individual", pattern: '*.png', mode: 'copy'
 
   input:
   tuple val(samp), path(gath_out)
@@ -41,7 +41,7 @@ process run_qc {
 
 process find_doublets {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/scrublet_out", pattern: '*.csv', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
 
   input:
   tuple val(samp), path(qc_out), path(scr_bool)
@@ -61,14 +61,14 @@ process find_doublets {
 
 process pool_all {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/pooled_h5ad", pattern: '*.h5ad', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
   input:
   val(samp)
   val(qc_out)
 
   output:
-  path("pooled_postqc.h5ad")
+  path("scautoqc_pooled.h5ad")
 
   script:
   """
@@ -78,8 +78,8 @@ process pool_all {
 
 process add_metadata {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/pooled_h5ad", pattern: '*.h5ad', mode: 'copy'
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
   input:
@@ -88,7 +88,7 @@ process add_metadata {
   val(meta_path)
 
   output:
-  path("pooled_postqc_doubletflagged_metaadded.h5ad"), emit: obj
+  path("scautoqc_pooled_doubletflagged_metaadded.h5ad"), emit: obj
   path("*.png")
   path("sample_passqc_df.csv")
 
@@ -100,8 +100,8 @@ process add_metadata {
 
 process integrate {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/pooled_h5ad", pattern: '*.h5ad', mode: 'copy'
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/qc_plots", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}", pattern: '*.h5ad', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/models", pattern: '*.pkl', mode: 'copy'
 
 
