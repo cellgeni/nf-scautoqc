@@ -250,12 +250,6 @@ This step produces:
 * Current version of pipeline assumes that the Cellbender outputs exist. 
 * This addition will allow the pipeline to run Cellbender if the inputs do not exist.
 
-### Expand input options
-
-* Current version of pipeline is able to take STARsolo outputs only.
-* This expansion will allow user to specify the input type whether it is Cell Ranger or STARsolo input.
-* For Cell Ranger inputs, the pipeline will be able to run Velocyto and Cellbender without specifying anything additionally.
-
 ### Smart memory allocation
 
 * This addition will estimate the average memory needed for pool_all step, so it won't need to try multiple times until it runs well.

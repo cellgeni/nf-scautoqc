@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-#"""Gather starsolo and cellbender outputs into a single h5ad
+#"""Gather STARsolo (or Cell Ranger), Velocyto, CellBender  outputs into a single h5ad
 #
 #Usage: gather_matrices.py [options] 
 #
@@ -10,8 +10,7 @@
 #  --force            force overwrite if output exists
 #  --cr_gene   path to 10x matrix filtered folder
 #  --cr_velo    path to velocyto filtered folder
-#  --cb_h5    path to cellbender h5
-#"""
+#  --cb_h5    path to cellbender h5#"""
 
 
 import logging
@@ -157,13 +156,20 @@ def read_cellbender_v3(f,
     return ad1
 
 def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
-    cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
+    barcodes_file = os.path.join(cr_gene_filtered_mtx, "barcodes.tsv.gz")
+    features_file = os.path.join(cr_gene_filtered_mtx, "features.tsv.gz")
+    matrix_file = os.path.join(cr_gene_filtered_mtx, "matrix.mtx.gz")
+    
+    if os.path.exists(barcodes_file) and os.path.exists(features_file) and os.path.exists(matrix_file):
+        cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
+    else:
+        cr_gene_filtered_ad = sc.read_10x_h5(os.path.join(cr_gene_filtered_mtx, "filtered_feature_bc_matrix.h5"))
     logging.info("cr_gene_filtered_mtx done")
     if cr_velo_filtered_mtx == "": 
         cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
         logging.info("cr_velo_filtered_mtx done")
 
-    if not cb_filtered_h5 == None: 
+    if cb_filtered_h5 is not None: 
         cb_gene_filtered_ad = read_cellbender(cb_filtered_h5)
         logging.info("cb_filtered_h5 done")
 
@@ -204,9 +210,6 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                     X=cr_gene_filtered_ad.X,
                     obs=cr_gene_filtered_ad.obs.copy(),
                     var=cr_gene_filtered_ad.var.copy(),
-                    layers={
-                        "raw": cr_gene_filtered_ad.X
-                    }
             )
             else:
                 ad = anndata.AnnData(

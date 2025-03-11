@@ -126,8 +126,8 @@ workflow all {
        .flatten()
    .multiMap { it ->
            samp: it
-           cr_gene: "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
+           cr_gene: "${params.ss_prefix}" == "" ? "${params.cr_prefix}/${it}/filtered_feature_bc_matrix.h5" : "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
+           cr_velo: "${params.ss_prefix}" == "" ? [] : "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
            cb_h5:   "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
        .set {samples}
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
@@ -144,9 +144,9 @@ workflow only_qc {
        .flatten()
    .multiMap { it ->
            samp: it
-           cr_gene: "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
-           cb_h5:   "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
+           cr_gene: "${params.ss_prefix}" == "" ? "${params.cr_prefix}/${it}/filtered_feature_bc_matrix.h5" : "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
+           cr_velo: "${params.ss_prefix}" == "" ? [] : "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
+           cb_h5:   "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
        .set {samples}
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
