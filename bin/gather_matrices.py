@@ -159,8 +159,9 @@ def read_cellbender_v3(f,
 def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
     logging.info("cr_gene_filtered_mtx done")
-    cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
-    logging.info("cr_velo_filtered_mtx done")
+    if cr_velo_filtered_mtx == "": 
+        cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
+        logging.info("cr_velo_filtered_mtx done")
 
     if not cb_filtered_h5 == None: 
         cb_gene_filtered_ad = read_cellbender(cb_filtered_h5)
@@ -197,30 +198,51 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                 ad.layers[layer].eliminate_zeros()
         return ad
     else:
-        if args.ss_out == 'GeneFull':
-            ad = anndata.AnnData(
-                X=cr_gene_filtered_ad.X,
-                obs=cr_gene_filtered_ad.obs.copy(),
-                var=cr_gene_filtered_ad.var.copy(),
-                layers={
-                    "raw": cr_gene_filtered_ad.X
-                }
-        )
+        if cr_velo_filtered_mtx is not None:
+            if args.ss_out == 'GeneFull':
+                ad = anndata.AnnData(
+                    X=cr_gene_filtered_ad.X,
+                    obs=cr_gene_filtered_ad.obs.copy(),
+                    var=cr_gene_filtered_ad.var.copy(),
+                    layers={
+                        "raw": cr_gene_filtered_ad.X
+                    }
+            )
+            else:
+                ad = anndata.AnnData(
+                    X=cr_gene_filtered_ad.X,
+                    obs=cr_gene_filtered_ad.obs.copy(),
+                    var=cr_gene_filtered_ad.var.copy(),
+                    layers={
+                        "raw": cr_gene_filtered_ad.X,
+                        "spliced": cr_velo_filtered_ad.X,
+                        "unspliced": cr_velo_filtered_ad.layers["unspliced"],
+                        "ambiguous": cr_velo_filtered_ad.layers["ambiguous"],
+                    }
+            )
+                for layer in ("spliced", "unspliced", "ambiguous"):
+                    ad.layers[layer].eliminate_zeros()
+            return ad
         else:
-            ad = anndata.AnnData(
-                X=cr_gene_filtered_ad.X,
-                obs=cr_gene_filtered_ad.obs.copy(),
-                var=cr_gene_filtered_ad.var.copy(),
-                layers={
-                    "raw": cr_gene_filtered_ad.X,
-                    "spliced": cr_velo_filtered_ad.X,
-                    "unspliced": cr_velo_filtered_ad.layers["unspliced"],
-                    "ambiguous": cr_velo_filtered_ad.layers["ambiguous"],
-                }
-        )
-            for layer in ("spliced", "unspliced", "ambiguous"):
-                ad.layers[layer].eliminate_zeros()
-        return ad
+            if args.ss_out == 'GeneFull':
+                ad = anndata.AnnData(
+                    X=cr_gene_filtered_ad.X,
+                    obs=cr_gene_filtered_ad.obs.copy(),
+                    var=cr_gene_filtered_ad.var.copy(),
+                    layers={
+                        "raw": cr_gene_filtered_ad.X
+                    }
+            )
+            else:
+                ad = anndata.AnnData(
+                    X=cr_gene_filtered_ad.X,
+                    obs=cr_gene_filtered_ad.obs.copy(),
+                    var=cr_gene_filtered_ad.var.copy(),
+                    layers={
+                        "raw": cr_gene_filtered_ad.X,
+                    }
+            )
+            return ad
 
 
 def main(args):
