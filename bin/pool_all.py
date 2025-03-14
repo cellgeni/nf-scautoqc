@@ -10,8 +10,6 @@ Options:
 
 
 import scanpy as sc
-import pandas as pd
-import anndata
 import gc
 import argparse
 
@@ -39,17 +37,14 @@ ads1 = [ads[new_order.index(i)] for i in range(0,len(samples))]
 del ads
 gc.collect()
 
-pooled_ad = anndata.AnnData.concatenate(
+pooled_ad = sc.AnnData.concatenate(
     *ads1, batch_key="sampleID", batch_categories=samples
 )
 
 del ads1
 gc.collect()
 
-if args.ss_out == 'Gene':
-    suffixes = ("", "_raw", "_spliced", "_unspliced")
-else:
-    suffixes = ("", "_raw")
+suffixes = tuple([""] + [i for i in pooled_ad.layers.keys() if i != 'ambiguous'])
 
 for suffix in suffixes:
     pooled_ad.var[f"n_counts{suffix}"] = pooled_ad.var[
@@ -80,6 +75,6 @@ for suffix in suffixes:
         del pooled_ad.var[f"n_cells{suffix}-{sid}"]
 
 pooled_ad.write(
-    "pooled_postqc.h5ad",
+    "scautoqc_pooled.h5ad",
     compression="gzip",
 )

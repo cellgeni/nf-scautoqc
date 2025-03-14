@@ -165,7 +165,7 @@ workflow after_qc {
        .flatten()
        .set {scrublets}
   pool_all(samples.collect( sort: true ).map { it.join(',') },objects.collect( sort:true ).map { it.join(',') })
-  add_metadata(pool_all.out, scrublets.collect( sort: true).map { it.join(',') }, params.metadata)
+  add_metadata(pool_all.out, find_doublets.out.collect( sort: true).map { it.join(',') }, params.metadata)
   integrate(add_metadata.out.obj, params.batch_key)
 }
 

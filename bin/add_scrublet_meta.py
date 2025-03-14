@@ -18,8 +18,10 @@ import numpy as np
 import anndata
 import gc
 import re
+import os
 import argparse
 
+base_dir = os.getenv('BASE_DIR')
 
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--obj", default=None, help="path of the pooled h5ad")
@@ -63,9 +65,9 @@ if not args.meta == None:
 
     pooled_ad0.obs = obs_df
 
-CC_GENE_LIST = "/lustre/scratch127/cellgen/cellgeni/cakirb/QC_pipeline/feature_list/JP_cycle_genes.list"
-IG_GENE_LIST = "/lustre/scratch127/cellgen/cellgeni/cakirb/QC_pipeline/feature_list/ig_genes.list"
-TCR_GENE_LIST = "/lustre/scratch127/cellgen/cellgeni/cakirb/QC_pipeline/feature_list/tcr_genes.list"
+CC_GENE_LIST = f"{base_dir}/genes_list/JP_cycle_genes.list"
+IG_GENE_LIST = f"{base_dir}/genes_list/ig_genes.list"
+TCR_GENE_LIST = f"{base_dir}/genes_list/tcr_genes.list"
 
 cc_genes = pd.read_csv(CC_GENE_LIST, header=None, names=["gene"]).gene
 ig_genes = pd.read_csv(IG_GENE_LIST, header=None, names=["gene"]).gene

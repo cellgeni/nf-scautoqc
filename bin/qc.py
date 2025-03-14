@@ -20,13 +20,10 @@ Options:
 import logging
 import signal
 import sys
-import os
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import numpy as np
-import pandas as pd
-
 import matplotlib
 
 matplotlib.use("Agg")
@@ -342,9 +339,6 @@ def main(args):
 
     input_h5ad = args.out_path 
     
-    if plot_only:
-        input_h5ad = postqc_h5ad
-
     ad = sc.read(input_h5ad)
 
     (
@@ -358,8 +352,6 @@ def main(args):
         qc_cluster_ufig,
     ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only, args.ss_out)
 
-    # sid_qc_plot_dir = os.path.join(args.out_path, sid)
-    # os.makedirs(sid_qc_plot_dir, exist_ok=True)
     metric_vfig.savefig(
         f"{sid}.qc_plot.metric_vfig.png", bbox_inches="tight"
     )
