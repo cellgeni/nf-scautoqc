@@ -1,0 +1,16 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# remove the metadata line below if there is no metadata 
+
+nextflow run cellgeni/nf-scautoqc -r main \
+  -entry subset \
+  --SAMPLEFILE /path/to/sample/file \
+  --metadata /path/to/metadata/file \
+  --cr_prefix /path/to/cellranger/folder \
+  --limits_csv /path/to/limits/file \
+  --project_tag project1 \
+  --batch_key sampleID \
+  --ansi-log false \
+  -resume

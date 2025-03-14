@@ -30,8 +30,8 @@ The recommended way to use nextflow is to run it in a screen session. These step
 
 ## Workflow
 
-![](scautoqc-diagram-light.png#gh-light-mode-only)
-![](scautoqc-diagram-dark.png#gh-dark-mode-only)  
+![](images/scautoqc-diagram-light.png#gh-light-mode-only)
+![](images/scautoqc-diagram-dark.png#gh-dark-mode-only)  
 This pipeline produces 10 outputs, each were detailed in their corresponding steps:
 * ***[output 1]:*** h5ad objects with different layers `1_gathered_objects/`
 * ***[output 2]:*** h5ad objects with QC metrics `2_qc_objects/`
@@ -44,6 +44,8 @@ This pipeline produces 10 outputs, each were detailed in their corresponding ste
 * ***[output 9]:*** final integrated h5ad object `scautoqc_integrated.h5ad`
 * ***[output 10]:*** ELBO plot from scVI training `5_qc_plots_overall/`
 
+![](images/workflow_modes.png)  
+The default version of the pipeline runs all the steps shown the diagram above. This pipeline has six run modes as shown above:
 * `all`: runs all steps (1-2-3-4-5-6)
 * `only_qc`: runs the steps until pooling including doublet finding (1-2-3)
 * `after_qc`: runs the steps starting from pooling (4-5-6)
@@ -53,8 +55,7 @@ This pipeline produces 10 outputs, each were detailed in their corresponding ste
   * `subset_object` step replaces the `run_qc` step. This mode doesn't run automatic QC; instead, it calculates QC metrics and subsets according to the cutoffs you provide in the `--limits_csv` parameter in the 2nd step (2a).
   * `add_metadata_basic` step replaces the `add_metadata` step. The only difference in this step is that it doesn't remove any cells or samples (5a).
 
-
-The parameters needed for all run modes are already specified in different RESUME scripts, and also can be found below:
+The parameters needed for all run modes are already specified in different RESUME scripts in `examples` folder, and also can be found below:
 
 <details>
 
@@ -145,7 +146,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 <summary>Workflow: only_integrate</summary>
 
 ```
-# to run steps until integration
+# to run the integration step only
 nextflow run cellgeni/nf-scautoqc -r main \
   -entry only_integrate \            # to choose run mode
   --path_for_scvi /path/to/object/to/integrate \
@@ -296,7 +297,7 @@ The `add_metadata_basic` step is also exclusive to the `subset` mode and replace
 
 ## Original workflow scheme
 
-![](scautoqc-original-diagram.png)
+![](images/scautoqc-original-diagram.png)
 
 # Changelog
 
