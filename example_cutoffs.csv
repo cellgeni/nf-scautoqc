@@ -1,0 +1,4 @@
+metric,low,high
+n_counts,,100000
+n_genes,500,
+percent_mito,,20

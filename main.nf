@@ -39,6 +39,22 @@ process run_qc {
   """
 }
 
+process subset_object {
+
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+
+  input:
+  val(samp)
+
+  output:
+  tuple val(samp), path("subsetted.h5ad"), path("*-scr"), emit: samp_obj
+
+  script:
+  """
+  python ${baseDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
+  """
+}
+
 process find_doublets {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
@@ -94,7 +110,27 @@ process add_metadata {
 
   script:
   """
+  export BASE_DIR=${baseDir}
   python ${baseDir}/bin/add_scrublet_meta.py --obj ${pool_out} --scr ${scr_out} --meta ${meta_path}
+  """
+}
+
+process add_metadata_basic {
+
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
+
+  input:
+  path(pool_out)
+  val(scr_out)
+  val(meta_path)
+
+  output:
+  path("scautoqc_pooled_doubletflagged_metaadded_basic.h5ad"), emit: obj
+
+  script:
+  """
+  export BASE_DIR=${baseDir}
+  python ${baseDir}/bin/add_scrublet_meta_basic.py --obj ${pool_out} --scr ${scr_out} --meta ${meta_path}
   """
 }
 
@@ -188,4 +224,16 @@ workflow until_integrate {
 
 workflow only_integrate {
   integrate(params.path_for_scvi, params.batch_key)
+}
+
+workflow subset {
+  Channel.fromPath("${params.SAMPLEFILE}")
+       .splitCsv (header: false) 
+       .flatten()
+       .set {samples}
+  subset_object(samples)
+  find_doublets(subset_object.out.samp_obj)
+  pool_all(subset_object.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') }, subset_object.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
+  add_metadata_basic(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
+}
 }

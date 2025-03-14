@@ -44,13 +44,14 @@ This pipeline produces 10 outputs, each were detailed in their corresponding ste
 * ***[output 9]:*** final integrated h5ad object `scautoqc_integrated.h5ad`
 * ***[output 10]:*** ELBO plot from scVI training `5_qc_plots_overall/`
 
-![](workflow_modes.png)  
-The default version of the pipeline runs all the steps shown the diagram above. This pipeline has three run modes as shown on the right:
 * `all`: runs all steps (1-2-3-4-5-6)
 * `only_qc`: runs the steps until pooling including doublet finding (1-2-3)
 * `after_qc`: runs the steps starting from pooling (4-5-6)
 * `until_integrate`: runs the steps until integration (1-2-3-4-5)
 * `only_integrate`: runs the integration step only (6)
+* `subset`: runs the pipeline differently than the other modes (2a-3-4-5a)  
+  * `subset_object` step replaces the `run_qc` step. This mode doesn't run automatic QC; instead, it calculates QC metrics and subsets according to the cutoffs you provide in the `--limits_csv` parameter in the 2nd step (2a).
+  * `add_metadata_basic` step replaces the `add_metadata` step. The only difference in this step is that it doesn't remove any cells or samples (5a).
 
 
 The parameters needed for all run modes are already specified in different RESUME scripts, and also can be found below:
@@ -157,6 +158,26 @@ nextflow run cellgeni/nf-scautoqc -r main \
 </details>
 
 
+<details>
+
+<summary>Workflow: subset</summary>
+
+```
+# to run all the steps without automatic qc
+nextflow run cellgeni/nf-scautoqc -r main \
+  -entry subset \                             # to choose run mode
+  --SAMPLEFILE /path/to/sample/file \
+  --metadata /path/to/metadata/file \
+  --cr_prefix /path/to/cellranger/folder \    # to specify the cellranger output path
+  --limits_csv /path/to/limits/file \         # to specify the cutoffs used for subsetting
+  --project_tag project1 \         # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
+  --ansi-log false \
+  -resume
+```
+
+</details>
+
+
 ### 1. `gather_matrices`  
 
 The inputs for the first step are determined according to STARsolo output which is specificed to use `ss_out`:
@@ -242,6 +263,24 @@ This step requires the h5ad object from `add_metadata` step.
 This step produces:
 * ***[output 9]:*** final integrated h5ad object
 * ***[output 10]:*** ELBO plot from scVI training
+
+## Different steps for `subset` mode
+
+### 2a. `subset_object` (`subset` mode only)
+
+This step requires the Cell Ranger outputs specified by the `--cr_prefix` parameter and a CSV file containing the subsetting cutoffs provided via the `--limits_csv` parameter.
+
+The `subset_object` step is exclusive to the `subset` mode and replaces the `run_qc` step from the main pipeline. Unlike the main pipeline, it does not execute the automatic QC algorithm, which is a core component of the scAutoQC pipeline. Instead, it calculates QC metrics and subsets the data based on the cutoffs defined in the `--limits_csv` parameter.
+
+This step produces:
+* ***[output 2]:*** an h5ad object with QC metrics.
+
+### 5a. `add_metadata_basic` (`subset` mode only)
+
+This step requires the h5ad output from the `pool_all` step and the scrublet CSV outputs from the `find_doublets` step.
+
+The `add_metadata_basic` step is also exclusive to the `subset` mode and replaces the `add_metadata` step from the main pipeline. The key differences are that it does not perform QC scoring per sample and does not remove any cells or samples.
+
 
 ## Future plans
 
