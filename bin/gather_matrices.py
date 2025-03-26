@@ -165,7 +165,7 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     else:
         cr_gene_filtered_ad = sc.read_10x_h5(os.path.join(cr_gene_filtered_mtx, "filtered_feature_bc_matrix.h5"))
     logging.info("cr_gene_filtered_mtx done")
-    if cr_velo_filtered_mtx == "": 
+    if cr_velo_filtered_mtx != "": 
         cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
         logging.info("cr_velo_filtered_mtx done")
 

@@ -93,7 +93,10 @@ def main(args):
     
     ad.write("subsetted.h5ad", compression="gzip")
 
-    open(f'{sid}_yes-scr', 'a').close()
+    if (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
+        open(f'{sid}_no-scr', 'a').close()
+    else:
+        open(f'{sid}_yes-scr', 'a').close()
 
     return 0
 

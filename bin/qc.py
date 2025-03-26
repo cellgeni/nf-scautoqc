@@ -317,6 +317,15 @@ def main(args):
     logging.debug(args)
 
     sid = args.sample_id
+    models = parse_model_option(args.models)
+    clst_res = float(args.clst_res)
+    min_frac = float(args.min_frac)
+    plot_only = args.plot_only
+
+    input_h5ad = args.out_path 
+    
+    ad = sc.read(input_h5ad)
+
     if not args.qc_metrics == None:
         qc_metrics = args.qc_metrics.split(",")
     else:
@@ -332,14 +341,6 @@ def main(args):
                 ]
         else:
             qc_metrics = None
-    models = parse_model_option(args.models)
-    clst_res = float(args.clst_res)
-    min_frac = float(args.min_frac)
-    plot_only = args.plot_only
-
-    input_h5ad = args.out_path 
-    
-    ad = sc.read(input_h5ad)
 
     (
         metric_vfig,
@@ -350,7 +351,7 @@ def main(args):
         ctp_prob_sfig,
         ctp_pred_ufig,
         qc_cluster_ufig,
-    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only, args.ss_out)
+    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only)
 
     metric_vfig.savefig(
         f"{sid}.qc_plot.metric_vfig.png", bbox_inches="tight"
@@ -379,10 +380,12 @@ def main(args):
 
     ad.obs['sampleID'] = sid
     
+    ad.uns['scautoqc_ranges'] = ad.uns['scautoqc_ranges'].applymap(lambda x: x.item() if hasattr(x, "item") else x)
+
     if not plot_only:
         ad.write("postqc.h5ad", compression="gzip")
 
-    if ad.obs['good_qc_cluster_mito80'].mean() < 0.25:
+    if ad.obs['good_qc_cluster_mito80'].mean() < 0.25 or (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
         open(f'{sid}_no-scr', 'a').close()
     else:
         open(f'{sid}_yes-scr', 'a').close()
