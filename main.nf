@@ -166,13 +166,18 @@ process integrate {
 
 workflow all {
   Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv (header: false) 
+       .splitCsv(header: false) 
        .flatten()
-   .multiMap { it ->
+       .map { it ->
+          def resolvedPath = "readlink -f ${params.ss_prefix}/${it}".execute().text.trim()
+          [it, resolvedPath]
+      }
+       .multiMap { it, resolvedPath -> 
            samp: it
-           cr_gene: "${params.ss_prefix}" == "" ? "${params.cr_prefix}/${it}/filtered_feature_bc_matrix.h5" : "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}" == "" ? [] : "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
-           cb_h5:   "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
+           cr_gene: "${params.ss_prefix}" == "" ? "${resolvedPath}/filtered_feature_bc_matrix.h5" : "${resolvedPath}/output/${params.ss_out}/filtered/"
+           cr_velo: "${params.ss_prefix}" == "" ? [] : "${resolvedPath}/output/Velocyto/filtered/"
+           cb_h5: "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
+       }
        .set {samples}
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
@@ -184,13 +189,18 @@ workflow all {
 
 workflow only_qc {
   Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv (header: false) 
+       .splitCsv(header: false) 
        .flatten()
-   .multiMap { it ->
+       .map { it ->
+          def resolvedPath = "readlink -f ${params.ss_prefix}/${it}".execute().text.trim()
+          [it, resolvedPath]
+      }
+       .multiMap { it, resolvedPath -> 
            samp: it
-           cr_gene: "${params.ss_prefix}" == "" ? "${params.cr_prefix}/${it}/filtered_feature_bc_matrix.h5" : "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}" == "" ? [] : "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
-           cb_h5:   "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
+           cr_gene: "${params.ss_prefix}" == "" ? "${resolvedPath}/filtered_feature_bc_matrix.h5" : "${resolvedPath}/output/${params.ss_out}/filtered/"
+           cr_velo: "${params.ss_prefix}" == "" ? [] : "${resolvedPath}/output/Velocyto/filtered/"
+           cb_h5: "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
+       }
        .set {samples}
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
@@ -215,13 +225,18 @@ workflow after_qc {
 
 workflow until_integrate {
   Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv (header: false) 
+       .splitCsv(header: false) 
        .flatten()
-   .multiMap { it ->
+       .map { it ->
+          def resolvedPath = "readlink -f ${params.ss_prefix}/${it}".execute().text.trim()
+          [it, resolvedPath]
+      }
+       .multiMap { it, resolvedPath -> 
            samp: it
-           cr_gene: "${params.ss_prefix}/${it}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}/${it}/output/Velocyto/filtered/"
-           cb_h5:   "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"           }
+           cr_gene: "${params.ss_prefix}" == "" ? "${resolvedPath}/filtered_feature_bc_matrix.h5" : "${resolvedPath}/output/${params.ss_out}/filtered/"
+           cr_velo: "${params.ss_prefix}" == "" ? [] : "${resolvedPath}/output/Velocyto/filtered/"
+           cb_h5: "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
+       }
        .set {samples}
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
