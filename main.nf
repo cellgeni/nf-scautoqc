@@ -246,7 +246,8 @@ workflow until_integrate {
 }
 
 workflow only_integrate {
-  integrate(params.path_for_scvi, params.batch_key)
+  obj_scvi = Channel.fromPath("${params.path_for_scvi}")
+  integrate(obj_scvi, params.batch_key)
 }
 
 workflow subset {
