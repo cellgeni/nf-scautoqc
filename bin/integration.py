@@ -76,10 +76,7 @@ def mde_embed(mde):
 import scanpy as sc
 import pandas as pd
 import scvi
-import sctk as sk
-import seaborn as sn
 import matplotlib.pyplot as plt
-import numpy as np
 import anndata
 import gc
 import argparse
@@ -129,12 +126,11 @@ vae.train(
     max_epochs=400,
     batch_size=256,
     limit_train_batches=100,
-    use_gpu=True,
 )
 
 joblib.dump(
     vae,
-    f"scvi_model.pkl",
+    "scvi_model.pkl",
 )
 
 plt.plot(vae.history["elbo_train"])[0].figure.savefig("elbo_training.png")
@@ -147,20 +143,6 @@ joblib.dump(
 )
 
 mde_obj = run_mde(pooled_ad1.obsm["X_scvi"])
-
-# conn, dist = mde_neighbors(mde_obj, pooled_ad1.n_obs)
-
-# ad1.obsp["mde_connectivities"] = conn
-# ad1.obsp["mde_distances"] = dist
-
-# ad1.uns["neighbors_mde"] = {
-#     "method": "mde",
-#     "params": {"n_neighbors": 15},
-#     "random_state": 0,
-#     "use_rep": "X_scvi",
-#     "connectivities_key": "mde_connectivities",
-#     "distances_key": "mde_distances",
-# }
 
 pooled_ad1.obsm["X_mde"] = mde_embed(mde_obj)
 

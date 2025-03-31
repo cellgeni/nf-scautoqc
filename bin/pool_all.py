@@ -19,32 +19,29 @@ my_parser.add_argument("--objects", default=None, help="object paths separated b
 my_parser.add_argument("--ss_out", default=None, help="type of sequencing")
 args = my_parser.parse_args()
 
-samples = args.samples.split(',')
+samples = sorted(args.samples.split(','))
 objects = args.objects.split(',')
 
 if len(samples) != len(objects):
     objects = [i for i in objects if i.startswith(tuple(samples))]
 
-ads = []
+ads = {}
 for obj in objects:
-    ads.append(sc.read(obj))
-
-samp_ads = [ad.obs['sampleID'].unique()[0] for ad in ads]
-new_order = [samples.index(item) for item in samp_ads]
-
-ads1 = [ads[new_order.index(i)] for i in range(0,len(samples))]
-
-del ads
-gc.collect()
+    ad = sc.read(obj)
+    sample_id = ad.obs['sampleID'].unique()[0]
+    if sample_id in samples:
+        ads[sample_id] = ad
 
 pooled_ad = sc.AnnData.concatenate(
-    *ads1, batch_key="sampleID", batch_categories=samples
+    *[ads[sample] for sample in samples],
+    batch_key="sampleID",
+    batch_categories=samples
 )
 
-del ads1
+ads.clear()
 gc.collect()
 
-suffixes = tuple([""] + [i for i in pooled_ad.layers.keys() if i != 'ambiguous'])
+suffixes = tuple([""] + [f"_{i}" for i in pooled_ad.layers.keys() if i != 'ambiguous'])
 
 for suffix in suffixes:
     pooled_ad.var[f"n_counts{suffix}"] = pooled_ad.var[

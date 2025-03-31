@@ -38,7 +38,7 @@ pooled_ad0 = anndata.AnnData(
 del pooled_ad
 gc.collect()
 
-if not args.meta == None:
+if args.meta is not None:
     metadata = pd.read_csv(args.meta) # assuming sample IDs are in sampleID column
 
     for i in metadata.columns:
@@ -133,7 +133,7 @@ ax = sn.scatterplot(
 ax.set_xscale("symlog")
 ax.set_yscale("symlog")
 ax.axline((1e3, 1e3), (1e4, 1e4), c="grey", linestyle="--")
-ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), ncol=2);
+ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), ncol=2)
 plt.savefig("scatterplot_sample_passqc.png")
 
 
@@ -199,6 +199,6 @@ pooled_ad1.obs["stringent_doublet"] = (pooled_ad1.obs.scrublet_score > 0.3) | (
 )
 
 pooled_ad1.write(
-    "pooled_postqc_doubletflagged_metaadded.h5ad",
+    "scautoqc_pooled_doubletflagged_metaadded.h5ad",
     compression="gzip",
 )

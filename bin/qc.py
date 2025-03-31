@@ -34,7 +34,6 @@ rcParams["pdf.fonttype"] = 42
 rcParams["ps.fonttype"] = 42
 
 import celltypist
-import anndata
 import scanpy as sc
 import sctk as sk
 
@@ -326,7 +325,7 @@ def main(args):
     
     ad = sc.read(input_h5ad)
 
-    if not args.qc_metrics == None:
+    if args.qc_metrics is not None:
         qc_metrics = args.qc_metrics.split(",")
     else:
         if 'spliced' in ad.layers and 'unspliced' in ad.layers:
@@ -383,7 +382,7 @@ def main(args):
     ad.uns['scautoqc_ranges'] = ad.uns['scautoqc_ranges'].applymap(lambda x: x.item() if hasattr(x, "item") else x)
 
     if not plot_only:
-        ad.write("postqc.h5ad", compression="gzip")
+        ad.write(f"{sid}_postqc.h5ad", compression="gzip")
 
     if ad.obs['good_qc_cluster_mito80'].mean() < 0.25 or (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
         open(f'{sid}_no-scr', 'a').close()
