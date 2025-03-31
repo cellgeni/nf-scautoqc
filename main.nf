@@ -81,14 +81,14 @@ process pool_all {
 
   input:
   val(samp)
-  val(qc_out)
+  path(qc_out)
 
   output:
   path("scautoqc_pooled.h5ad")
 
   script:
   """
-  python ${baseDir}/bin/pool_all.py --samples ${samp} --objects ${qc_out} --ss_out ${params.ss_out}
+  python ${baseDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ss_out ${params.ss_out}
   """
 }
 
@@ -100,8 +100,8 @@ process add_metadata {
 
   input:
   path(pool_out)
-  val(scr_out)
-  val(meta_path)
+  path(scr_out)
+  path(meta_path)
 
   output:
   path("scautoqc_pooled_doubletflagged_metaadded.h5ad"), emit: obj
@@ -111,7 +111,7 @@ process add_metadata {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta.py --obj ${pool_out} --scr ${scr_out} --meta ${meta_path}
+  python ${baseDir}/bin/add_scrublet_meta.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${meta_path}
   """
 }
 
@@ -139,7 +139,6 @@ process integrate {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/models", pattern: '*.pkl', mode: 'copy'
-
 
   input:
   path(qc2_out)
@@ -169,8 +168,8 @@ workflow all {
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') },run_qc.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
-  add_metadata(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] },run_qc.out.samp_obj.collect() { it[1] })
+  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
   integrate(add_metadata.out.obj, params.batch_key)
 }
 
@@ -200,8 +199,8 @@ workflow after_qc {
   Channel.fromPath("${params.scrublet_path}/*.csv")
        .flatten()
        .set {scrublets}
-  pool_all(samples.collect( sort: true ).map { it.join(',') },objects.collect( sort:true ).map { it.join(',') })
-  add_metadata(pool_all.out, find_doublets.out.collect( sort: true).map { it.join(',') }, params.metadata)
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] },run_qc.out.samp_obj.collect() { it[1] })
+  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
   integrate(add_metadata.out.obj, params.batch_key)
 }
 
@@ -218,8 +217,8 @@ workflow until_integrate {
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') },run_qc.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
-  add_metadata(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] },run_qc.out.samp_obj.collect() { it[1] })
+  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
 }
 
 workflow only_integrate {
@@ -233,7 +232,6 @@ workflow subset {
        .set {samples}
   subset_object(samples)
   find_doublets(subset_object.out.samp_obj)
-  pool_all(subset_object.out.samp_obj.collect( sort: true ){ it[0] }.map { it.join(',') }, subset_object.out.samp_obj.collect( sort:true ) { it[1] }.map { it.join(',') })
-  add_metadata_basic(pool_all.out, find_doublets.out.collect( sort: true){ it[1] }.map { it.join(',') }, params.metadata)
-}
+  pool_all(subset_object.out.samp_obj.collect(){ it[0] },subset_object.out.samp_obj.collect() { it[1] })
+  add_metadata_basic(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
 }
