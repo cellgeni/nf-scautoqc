@@ -8,7 +8,7 @@ The recommended way to use nextflow is to run it in a screen session. These step
 
 1. Start a screen session: `screen -S nf_run1`
 2. Start a small interactive job for nextflow: `bsub -G cellgeni -n1 -R"span[hosts=1]" -Is -q long -R"select[mem>2000] rusage[mem=2000]" -M2000 bash`
-3. Modify one of RESUME scripts (pre-made Nextflow run scripts)
+3. Modify one of RESUME scripts in examples folder (pre-made Nextflow run scripts)
 4. Run the RESUME scripts you modified: `./RESUME-scautoqc-all`
 5. You can leave your screen session and let it run in the background: `Ctrl+A, D`
 
@@ -16,15 +16,22 @@ The recommended way to use nextflow is to run it in a screen session. These step
 
 * `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
 * `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
-* `RESUME-scautoqc-all` - an example run script that executes the whole pipeline.
-* `RESUME-scautoqc-afterqc` - an example run script that executes the pipeline after run_qc and find_doublets steps.
-* `RESUME-scautoqc-onlyqc` - an example run script that executes the pipeline after until pooling step.
-* `bin/gather_matrices.py` - a Python script that gathers matrices from STARsolo, Velocyto and Cellbender outputs (used in step 1).
-* `bin/qc.py` - a Python script that runs automatic QC workflow (used in step 2).
-* `bin/flag_doublet.py` - a Python script that runs scrublet to find doublets (used in step 3).
-* `bin/pool_all.py` - a Python script that combines all of the output objects after QC step (used in step 4).
-* `bin/add_scrublet_meta.py` - a Python script that adds scrublet scores (and metadata if available) (used in step 5).
-* `bin/integration.py` - a Python script that runs scVI integration (used in step 6).
+* `examples/` - a folder that includes pre-made Nextflow run scripts for each workflow:
+  * `RESUME-scautoqc-all` 
+  * `RESUME-scautoqc-onlyqc`
+  * `RESUME-scautoqc-afterqc`
+  * `RESUME-scautoqc-untilintegrate`
+  * `RESUME-scautoqc-onlyintegrate`
+  * `RESUME-scautoqc-subset` 
+* `bin/` - a folder that includes Python scripts used in the pipeline:
+  * `gather_matrices.py` - gathers matrices from STARsolo, Velocyto and Cellbender outputs (used in step 1).
+  * `qc.py` - runs automatic QC workflow (used in step 2).
+  * `subset.py` - subsets the input object (used in step 2a).
+  * `flag_doublet.py` - runs scrublet to find doublets (used in step 3).
+  * `pool_all.py` - combines all of the output objects after QC step (used in step 4).
+  * `add_scrublet_meta.py` - adds scrublet scores (and metadata if available) (used in step 5).
+  * `add_scrublet_meta_basic.py` - adds scrubles scores but doesn't remove any cells or samples (used in 5a).
+  * `integration.py` - runs scVI integration (used in step 6).
 * `genes_list/` - a folder that includes cell cycle, immunoglobulin and T cell receptor genes.
 * `Dockerfile` - a dockerfile to reproduce the environment used to run the pipeline.
 
@@ -192,6 +199,8 @@ This step requires three inputs:
 
 `gather_matrices` step combines the matrices from three inputs into one h5ad object with multiple layers for each sample: raw, spliced, unspliced, ambiguous (only raw layer is used if "GeneFull" mode is specified). Main expression matrix, cell and gene metadata are retrieved from Cellbender output. Raw matrix is retrieved from the expression matrix of STARsolo output folder named Gene. Spliced, unspliced and ambiguous matrices are all retrieved from the expression matrices of STARsolo output folder named Velocyto.
 
+This step can also use Cell Ranger inputs if `cr_prefix` option is provided instead of `ss_prefix` option, however this won't include Velocyto outputs.
+
 This step produces:  
 * ***[output 1]:*** h5ad object with different layers
 
@@ -281,19 +290,6 @@ This step produces:
 This step requires the h5ad output from the `pool_all` step and the scrublet CSV outputs from the `find_doublets` step.
 
 The `add_metadata_basic` step is also exclusive to the `subset` mode and replaces the `add_metadata` step from the main pipeline. The key differences are that it does not perform QC scoring per sample and does not remove any cells or samples.
-
-
-## Future plans
-
-### Add run_cellbender process
-
-* Current version of pipeline assumes that the Cellbender outputs exist. 
-* This addition will allow the pipeline to run Cellbender if the inputs do not exist.
-
-### Smart memory allocation
-
-* This addition will estimate the average memory needed for pool_all step, so it won't need to try multiple times until it runs well.
-
 
 ## Original workflow scheme
 

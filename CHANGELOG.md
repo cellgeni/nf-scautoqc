@@ -1,12 +1,29 @@
 ## Changelog
 
+### 25-091
+This update introduces a new workflow and multiple enhancements based on user feedback:
+
+* Added a new workflow:
+  * `subset` workflow: Enables running the pipeline by subsetting objects using predefined cutoffs instead of the automatic QC workflow (steps 2a-3-4-5a). More details are available in the [README](README.md#Different-steps-for-`subset`-mode).
+* Added support for Cell Ranger outputs in addition to STARsolo.
+* Improvements in nextflow pipeline:
+  * Updated the Singularity image for better compatibility.
+  * Renamed certain output files for clarity.
+  * Optimised the RESUME functionality to improve reliability.
+  * Introduced smart memory allocation for the `pool_all` and `add_metadata` steps based on input size.
+  * Optimised resource allocation for other processes.
+  * Enabled the pipeline to work seamlessly with symbolic links in the input.
+* Optimisations in scripts:
+  * Removed unused lines, characters, and packages for cleaner code.
+  * Fixed hardcoded paths to improve flexibility.
+  * Optimised memory usage in the `pool_all` process.
+
 ### 25-064
 * Added two new workflows:
   * `until_integrate` workflow makes it easier to run the steps until integration (1-2-3-4-5)
   * `only_integrate` workflow makes it easier to run the integration step only (6)
 * Improvements and changes in scripts:
   * Folder names in the outputs were renamed.
-
 
 ### 24-143
 * <ins>**New workflow:**</ins> `only_qc`
