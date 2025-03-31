@@ -23,14 +23,14 @@ process gather_matrices {
 
 process run_qc {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_plots_individual", pattern: '*.png', mode: 'copy'
 
   input:
   tuple val(samp), path(gath_out)
 
   output:
-  tuple val(samp), path("postqc.h5ad"), path("*-scr"), emit: samp_obj
+  tuple val(samp), path("*_postqc.h5ad"), path("*-scr"), emit: samp_obj
   path("*.png")
 
   script:
@@ -57,13 +57,13 @@ process subset_object {
 
 process find_doublets {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy'
 
   input:
   tuple val(samp), path(qc_out), path(scr_bool)
 
   output:
-  tuple val(samp), path("postqc_scrublet.csv")
+  tuple val(samp), path("*_scrublet.csv")
 
   when:
   scr_bool.name.endsWith('yes-scr')
