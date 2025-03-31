@@ -79,6 +79,11 @@ process pool_all {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
+  memory = { 
+        def numSamples = samp.size()  // Use the size of the input list
+        return 2.GB * numSamples * task.attempt
+    }
+
   input:
   val(samp)
   path(qc_out)
@@ -97,6 +102,8 @@ process add_metadata {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
+
+  memory = { 3.6.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
 
   input:
   path(pool_out)
@@ -119,6 +126,8 @@ process add_metadata_basic {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
+  memory = { 3.6.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
+  
   input:
   path(pool_out)
   val(scr_out)
