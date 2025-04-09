@@ -329,6 +329,8 @@ def main(args):
         qc_metrics = args.qc_metrics.split(",")
     else:
         if 'spliced' in ad.layers and 'unspliced' in ad.layers:
+            qc_metrics = None
+        else:
             qc_metrics = [
                     "log1p_n_counts",
                     "log1p_n_genes",
@@ -338,8 +340,6 @@ def main(args):
                     "percent_top50",
                     "percent_soup",
                 ]
-        else:
-            qc_metrics = None
 
     (
         metric_vfig,
