@@ -13,4 +13,5 @@ nextflow run cellgeni/nf-scautoqc -r main \
   --project_tag project1 \
   --batch_key sampleID \
   --ansi-log false \
+  -latest \
   -resume

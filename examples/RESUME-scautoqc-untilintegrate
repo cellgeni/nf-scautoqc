@@ -13,4 +13,5 @@ nextflow run cellgeni/nf-scautoqc -r main \
   --ss_out Gene \
   --project_tag project1 \
   --ansi-log false \
+  -latest \
   -resume
