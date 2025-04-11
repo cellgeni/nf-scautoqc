@@ -108,7 +108,7 @@ process add_metadata {
   input:
   path(pool_out)
   path(scr_out)
-  path(meta_path)
+  val(meta_path)
 
   output:
   path("scautoqc_pooled_doubletflagged_metaadded.h5ad"), emit: obj
@@ -130,7 +130,7 @@ process add_metadata_basic {
   
   input:
   path(pool_out)
-  val(scr_out)
+  path(scr_out)
   val(meta_path)
 
   output:
@@ -139,7 +139,7 @@ process add_metadata_basic {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta_basic.py --obj ${pool_out} --scr ${scr_out} --meta ${meta_path}
+  python ${baseDir}/bin/add_scrublet_meta_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${meta_path}
   """
 }
 
