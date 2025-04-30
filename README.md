@@ -39,17 +39,37 @@ The recommended way to use nextflow is to run it in a screen session. These step
 
 ![](images/scautoqc-diagram-light.png#gh-light-mode-only)
 ![](images/scautoqc-diagram-dark.png#gh-dark-mode-only)  
-This pipeline produces 10 outputs, each were detailed in their corresponding steps:
-* ***[output 1]:*** h5ad objects with different layers `1_gathered_objects/`
-* ***[output 2]:*** h5ad objects with QC metrics `2_qc_objects/`
-* ***[output 3]:*** QC plots for each sample `2_qc_plots_individual/`
-* ***[output 4]:*** CSV files with scrublet scores `3_doublet_scores/`
-* ***[output 5]:*** pooled h5ad object with all the samples `scautoqc_pooled.h5ad`
-* ***[output 6]:*** pooled h5ad object with metadata `scautoqc_pooled_doubletflagged_metaadded.h5ad`
-* ***[output 7]:*** QC plots `5_qc_plots_overall/`
-* ***[output 8]:*** CSV with QC metrics for each sample `sample_passqc_df.csv`
-* ***[output 9]:*** final integrated h5ad object `scautoqc_integrated.h5ad`
-* ***[output 10]:*** ELBO plot from scVI training `5_qc_plots_overall/`
+
+This pipeline implements the scAutoQC workflow, performing automated quality control, doublet detection, and optional integration for single-cell RNA-seq data. It processes samples individually through QC steps, pools them, adds metadata and doublet flags, and finally integrates the data using scVI. Different run modes allow flexibility in executing specific parts of the workflow.
+
+### Inputs
+
+The pipeline requires the following primary inputs, typically configured via command-line parameters or within a RESUME script:
+
+*   A file listing the samples to be processed (`--SAMPLEFILE`).
+*   Paths to the primary gene expression data, which can be:
+    *   STARsolo output directories (`--ss_prefix`). The specific output type (e.g., `Gene`, `GeneFull`) is specified with `--ss_out`.
+    *   Cell Ranger output directories (`--cr_prefix`). Should work fine with all workflows, but it's primarily used in `subset` mode or if STARsolo data is unavailable.
+*   Path to CellBender HDF5 output files (`--cb_prefix`). If provided, used as the primary source for the main expression matrix and cell/gene metadata. Otherwise, STARsolo/Cell Ranger outputs are used.
+*   A file containing cell-level metadata to be added after pooling (`--metadata`).
+*   A CSV file specifying manual QC cutoffs when running in `subset` mode (`--limits_csv`). Example file was provided as `example_cutoffs.csv` (Subset Mode Only).
+
+### Outputs
+
+The pipeline generates several outputs, organized into a results directory (e.g., `scautoqc-results-<project_tag>`):
+
+*   ***[output 1]:*** Individual H5AD objects per sample with raw, spliced, unspliced, and ambiguous layers (`1_gathered_objects/`).
+*   ***[output 2]:*** Individual H5AD objects per sample after QC, containing QC metrics and filtering flags (`2_qc_objects/`). In `subset` mode, this contains QC metrics but no automatic filtering flags.
+*   ***[output 3]:*** QC plots generated for each individual sample during the `run_qc` step (`2_qc_plots_individual/`). Not generated in `subset` mode.
+*   ***[output 4]:*** CSV files containing predicted doublet scores from Scrublet for each sample (`3_doublet_scores/`).
+*   ***[output 5]:*** A single, pooled H5AD object containing data from all samples after individual QC (`scautoqc_pooled.h5ad`).
+*   ***[output 6]:*** The pooled H5AD object after adding metadata and doublet flags (`scautoqc_pooled_doubletflagged_metaadded.h5ad`). Samples failing basic QC checks might be removed (except in `subset` mode).
+*   ***[output 7]:*** Overall QC plots generated after pooling and metadata addition (`5_qc_plots_overall/`). Structure differs slightly in `subset` mode.
+*   ***[output 8]:*** A CSV file summarizing sample-level QC pass rates based on different mitochondrial thresholds (`sample_passqc_df.csv`). Not generated in `subset` mode.
+*   ***[output 9]:*** The final, integrated H5AD object after running scVI (`scautoqc_integrated.h5ad`). Generated only if integration steps are run.
+*   ***[output 10]:*** ELBO plot from the scVI model training (`5_qc_plots_overall/`). Generated only if integration steps are run.
+
+### Run Modes
 
 ![](images/workflow_modes.png)  
 The default version of the pipeline runs all the steps shown the diagram above. This pipeline has six run modes as shown above:
