@@ -62,7 +62,8 @@ def read_cellbender(
         raise ValueError("The data doesn't look like cellbender output")
     n_var, n_obs = tuple(mat["shape"][()])
     if "metadata" in f:
-        ad = read_cellbender_v3(f,
+        ad = read_cellbender_v3(
+            f,
             feat=feat,
             feat_name=feat_name,
             vardict=vardict,
@@ -72,12 +73,14 @@ def read_cellbender(
             remove_nan=remove_nan,
             train_history=train_history,
             latent_gene_encoding=latent_gene_encoding,
-            add_suffix=add_suffix,)
+            add_suffix=add_suffix,
+        )
     else:
         ad = sk.read_cellbender(input_h5)
     return ad
 
-def read_cellbender_v3(f,
+def read_cellbender_v3(
+    f,
     feat,
     feat_name,
     vardict,
@@ -159,17 +162,21 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     barcodes_file = os.path.join(cr_gene_filtered_mtx, "barcodes.tsv.gz")
     features_file = os.path.join(cr_gene_filtered_mtx, "features.tsv.gz")
     matrix_file = os.path.join(cr_gene_filtered_mtx, "matrix.mtx.gz")
-    
+
     if os.path.exists(barcodes_file) and os.path.exists(features_file) and os.path.exists(matrix_file):
         cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
     else:
         cr_gene_filtered_ad = sc.read_10x_h5(os.path.join(cr_gene_filtered_mtx, "filtered_feature_bc_matrix.h5"))
     logging.info("cr_gene_filtered_mtx done")
-    if cr_velo_filtered_mtx != "": 
+
+    if cr_velo_filtered_mtx != "":
+        # If Velocyto output exists, process it and merge into h5ad
         cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
         logging.info("cr_velo_filtered_mtx done")
 
-    if cb_filtered_h5 is not None: 
+    if cb_filtered_h5 is not None:
+        # If CellBender output is provided, process it and merge into h5ad
+        # Exclude some layers if "Gene" or "GeneFull" outputs are used
         cb_gene_filtered_ad = read_cellbender(cb_filtered_h5)
         logging.info("cb_filtered_h5 done")
 
@@ -179,7 +186,9 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
         )
         k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
         k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
+
         if args.ss_out == 'GeneFull':
+            # Create AnnData object with GeneFull output
             ad = anndata.AnnData(
                 X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
                 obs=cb_gene_filtered_ad.obs[k_cb].copy(),
@@ -187,8 +196,9 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                 layers={
                     "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
                 }
-        )
+            )
         else:
+            # Create AnnData object with spliced/unspliced/ambiguous layers
             ad = anndata.AnnData(
                 X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
                 obs=cb_gene_filtered_ad.obs[k_cb].copy(),
@@ -199,18 +209,18 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                     "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
                     "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
                 }
-        )
+            )
             for layer in ("spliced", "unspliced", "ambiguous"):
                 ad.layers[layer].eliminate_zeros()
         return ad
-    else:
+    else:  # If CellBender output is not provided
         if cr_velo_filtered_mtx is not None:
             if args.ss_out == 'GeneFull':
                 ad = anndata.AnnData(
                     X=cr_gene_filtered_ad.X,
                     obs=cr_gene_filtered_ad.obs.copy(),
                     var=cr_gene_filtered_ad.var.copy(),
-            )
+                )
             else:
                 ad = anndata.AnnData(
                     X=cr_gene_filtered_ad.X,
@@ -222,11 +232,12 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                         "unspliced": cr_velo_filtered_ad.layers["unspliced"],
                         "ambiguous": cr_velo_filtered_ad.layers["ambiguous"],
                     }
-            )
+                )
                 for layer in ("spliced", "unspliced", "ambiguous"):
                     ad.layers[layer].eliminate_zeros()
             return ad
         else:
+            # If neither CellBender nor velocyto data is provided
             if args.ss_out == 'GeneFull':
                 ad = anndata.AnnData(
                     X=cr_gene_filtered_ad.X,
@@ -235,7 +246,7 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                     layers={
                         "raw": cr_gene_filtered_ad.X
                     }
-            )
+                )
             else:
                 ad = anndata.AnnData(
                     X=cr_gene_filtered_ad.X,
@@ -244,9 +255,8 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
                     layers={
                         "raw": cr_gene_filtered_ad.X,
                     }
-            )
+                )
             return ad
-
 
 def main(args):
     logging.debug(args)
@@ -269,11 +279,10 @@ def main(args):
         else:
             ad = gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
             ad.write(output_h5ad, compression="gzip")
-            
+
             logging.info("done")
 
     return 0
-
 
 if __name__ == '__main__':
     import argparse
