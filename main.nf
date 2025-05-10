@@ -169,7 +169,8 @@ workflow all {
        .splitCsv(header: false) 
        .flatten()
        .map { it ->
-          def resolvedPath = "readlink -f ${params.ss_prefix}/${it}".execute().text.trim()
+          def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
+          def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
           [it, resolvedPath]
       }
        .multiMap { it, resolvedPath -> 
@@ -192,7 +193,8 @@ workflow only_qc {
        .splitCsv(header: false) 
        .flatten()
        .map { it ->
-          def resolvedPath = "readlink -f ${params.ss_prefix}/${it}".execute().text.trim()
+          def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
+          def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
           [it, resolvedPath]
       }
        .multiMap { it, resolvedPath -> 
@@ -228,7 +230,8 @@ workflow until_integrate {
        .splitCsv(header: false) 
        .flatten()
        .map { it ->
-          def resolvedPath = "readlink -f ${params.ss_prefix}/${it}".execute().text.trim()
+          def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
+          def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
           [it, resolvedPath]
       }
        .multiMap { it, resolvedPath -> 
