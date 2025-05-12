@@ -292,7 +292,7 @@ if __name__ == '__main__':
     my_parser.add_argument("--dry", default=None, help="print starsolo and cellbender outputs to gather")
     my_parser.add_argument("--force", default=None, help="force overwrite if output exists")
     my_parser.add_argument("--cr_gene", default=None, help="path to 10x matrix filtered folder")
-    my_parser.add_argument("--cr_velo", default=None, help="path to velocyto filtered folder")
+    my_parser.add_argument("--cr_velo", default=None, const=None, nargs='?', help="path to velocyto filtered folder")
     my_parser.add_argument("--cb_h5", default=None, const=None, nargs='?', help="path to cellbender h5")
     my_parser.add_argument("--ss_out", default=None, help="starsolo output to use")
     args = my_parser.parse_args()
