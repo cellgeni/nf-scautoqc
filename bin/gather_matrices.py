@@ -166,7 +166,7 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
     if os.path.exists(barcodes_file) and os.path.exists(features_file) and os.path.exists(matrix_file):
         cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
     else:
-        cr_gene_filtered_ad = sc.read_10x_h5(os.path.join(cr_gene_filtered_mtx, "filtered_feature_bc_matrix.h5"))
+        cr_gene_filtered_ad = sc.read_10x_h5(cr_gene_filtered_mtx)
     logging.info("cr_gene_filtered_mtx done")
 
     if cr_velo_filtered_mtx != "":
