@@ -268,8 +268,6 @@ def main(args):
 
     if not os.path.exists(cr_gene_filtered_mtx):
         raise FileNotFoundError(cr_gene_filtered_mtx)
-    if not os.path.exists(cr_velo_filtered_mtx):
-        raise FileNotFoundError(cr_velo_filtered_mtx)
 
     if args.dry:
         print(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
