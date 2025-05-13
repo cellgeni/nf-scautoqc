@@ -6,7 +6,6 @@ Usage: qc.py [options] <sample_id>
 Options:
   --debug             print debug information
   --profile           print profile information
-  --plot_only         plot only
   --qc_metrics <str>  comma-separated list of QC metrics [default: log1p_n_counts,log1p_n_genes,percent_mito,percent_ribo,percent_hb,percent_top50,percent_soup,percent_spliced]
   --models <str>      comma-separated <name>:<model.pkl> pairs giving celltypist models to use [default: ctp_pred:Immune_All_High.pkl]
   --clst_res <float>  resolution for QC clustering [default: 0.2]
@@ -75,8 +74,6 @@ def run_QC(
     models=None,
     res=0.2,
     threshold=0.5,
-    relabel_only=False,
-    plot_only=False,
 ):
     if qc_metrics is None:
         qc_metrics = [
@@ -99,21 +96,17 @@ def run_QC(
         metric_pairs.append(("percent_spliced", "scrublet_score"))
 
     if models is None:
-        models = celltypist_models
-    ctp_name = list(models.keys())[0]
-
-    if not plot_only and not relabel_only:
+        models = list(celltypist_models.keys())[0]
+    else:
         for name, mod in models.items():
             run_celltypist(ad, mod, min_prob=0.3, key_added=name)
 
-        calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
-        sk._pipeline.generate_qc_clusters(ad, metrics=qc_metrics, res=res)
+    calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
+    sk._pipeline.generate_qc_clusters(ad, metrics=qc_metrics, res=res)
 
     mito_thresholds = [20, 50, 80]
 
-
-    if not plot_only:
-        for max_mito in mito_thresholds:
+    for max_mito in mito_thresholds:
             if 'spliced' in ad.layers and 'unspliced' in ad.layers:
                 metrics={
                     "n_counts": (1000, None, "log", "min_only", 0.1),
@@ -299,7 +292,7 @@ def parse_model_option(model_str):
     return models
 
 
-def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False):
+def process_sample(ad, qc_metrics, models, clst_res, min_frac):
 
     qc_figs = run_QC(
         ad,
@@ -307,7 +300,6 @@ def process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only=False):
         models=models,
         res=clst_res,
         threshold=min_frac,
-        plot_only=plot_only,
     )
     return qc_figs
 
@@ -319,7 +311,6 @@ def main(args):
     models = parse_model_option(args.models)
     clst_res = float(args.clst_res)
     min_frac = float(args.min_frac)
-    plot_only = args.plot_only
 
     input_h5ad = args.out_path 
     
@@ -350,7 +341,7 @@ def main(args):
         ctp_prob_sfig,
         ctp_pred_ufig,
         qc_cluster_ufig,
-    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac, plot_only)
+    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac)
 
     metric_vfig.savefig(
         f"{sid}.qc_plot.metric_vfig.png", bbox_inches="tight"
@@ -381,8 +372,7 @@ def main(args):
     
     ad.uns['scautoqc_ranges'] = ad.uns['scautoqc_ranges'].applymap(lambda x: x.item() if hasattr(x, "item") else x)
 
-    if not plot_only:
-        ad.write(f"{sid}_postqc.h5ad", compression="gzip")
+    ad.write(f"{sid}_postqc.h5ad", compression="gzip")
 
     if ad.obs['good_qc_cluster_mito80'].mean() < 0.25 or (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
         open(f'{sid}_no-scr', 'a').close()
@@ -397,14 +387,12 @@ if __name__ == "__main__":
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--debug", default=None, help="print debug information")
     my_parser.add_argument("--profile", default=None, help="print profile information")
-    my_parser.add_argument("--plot_only", default=None, help="plot only")
     my_parser.add_argument("--qc_metrics", default=None, help="comma-separated list of QC metrics [default: log1p_n_counts,log1p_n_genes,percent_mito,percent_ribo,percent_hb,percent_top50,percent_soup,percent_spliced]")
     my_parser.add_argument("--models", default=None, help="comma-separated <name>:<model.pkl> pairs giving celltypist models to use [default: ctp_pred:Immune_All_High.pkl]")
     my_parser.add_argument("--clst_res", default=None, help="resolution for QC clustering [default: 0.2]")
     my_parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
     my_parser.add_argument("--out_path", default=None, help="path of the output files")
     my_parser.add_argument("--sample_id", default=None, help="sample id")
-    my_parser.add_argument("--ss_out", default=None, help="starsolo output to use")
 
     args = my_parser.parse_args()
 
