@@ -29,6 +29,7 @@ ads = {}
 for obj in objects:
     ad = sc.read(obj)
     sample_id = ad.obs['sampleID'].unique()[0]
+    ad.var_names_make_unique()
     if sample_id in samples:
         ads[sample_id] = ad
 
