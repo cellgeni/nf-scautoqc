@@ -35,7 +35,7 @@ process run_qc {
 
   script:
   """
-  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --models ${params.models} --sample_id ${samp} --out_path ${gath_out} --ss_out ${params.ss_out}
+  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --sample_id ${samp} --out_path ${gath_out}
   """
 }
 
