@@ -23,6 +23,7 @@ import sys
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 
 import numpy as np
+import pandas as pd
 import matplotlib
 
 matplotlib.use("Agg")
@@ -72,6 +73,7 @@ def run_QC(
     ad,
     qc_metrics=None,
     models=None,
+    metrics_csv=None
     res=0.2,
     threshold=0.5,
 ):
@@ -107,6 +109,10 @@ def run_QC(
     mito_thresholds = [20, 50, 80]
 
     for max_mito in mito_thresholds:
+        if metrics_csv is not None:
+            metrics=metrics_csv
+            metrics.loc['percent_mito']['max'] = max_mito
+        else:
             if 'spliced' in ad.layers and 'unspliced' in ad.layers:
                 metrics={
                     "n_counts": (1000, None, "log", "min_only", 0.1),
@@ -120,29 +126,29 @@ def run_QC(
                     "n_genes": (100, None, "log", "min_only", 0.1),
                     "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     }
-            sk._pipeline.cellwise_qc(
-                ad,
-                metrics,
-                cell_qc_key=f"good_qc_cluster_mito{max_mito}"
-            )
-            sk._pipeline.clusterwise_qc(
-                ad,
-                cell_qc_key=f"good_qc_cluster_mito{max_mito}",
-                key_added=f"good_qc_cluster_mito{max_mito}",
-            )
-            ad.obs[f"pass_auto_filter_mito{max_mito}"] = ad.obs[f"good_qc_cluster_mito{max_mito}"]
-        ad.obs["pass_auto_filter"] = 100
-        for max_mito in mito_thresholds[::-1]:
-            ad.obs.loc[
-                ad.obs[f"pass_auto_filter_mito{max_mito}"], "pass_auto_filter"
-            ] = max_mito
-        # ad.obs["pass_auto_filter"] = ad.obs["pass_auto_filter"].astype("category")
-        ad.obs["good_qc_cluster"] = 100
-        for max_mito in mito_thresholds[::-1]:
-            ad.obs.loc[
-                ad.obs[f"good_qc_cluster_mito{max_mito}"], "good_qc_cluster"
-            ] = max_mito
-        # ad.obs["good_qc_cluster"] = ad.obs["good_qc_cluster"].astype("category")
+        sk._pipeline.cellwise_qc(
+            ad,
+            metrics,
+            cell_qc_key=f"good_qc_cluster_mito{max_mito}"
+        )
+        sk._pipeline.clusterwise_qc(
+            ad,
+            cell_qc_key=f"good_qc_cluster_mito{max_mito}",
+            key_added=f"good_qc_cluster_mito{max_mito}",
+        )
+        ad.obs[f"pass_auto_filter_mito{max_mito}"] = ad.obs[f"good_qc_cluster_mito{max_mito}"]
+    ad.obs["pass_auto_filter"] = 100
+    for max_mito in mito_thresholds[::-1]:
+        ad.obs.loc[
+            ad.obs[f"pass_auto_filter_mito{max_mito}"], "pass_auto_filter"
+        ] = max_mito
+    # ad.obs["pass_auto_filter"] = ad.obs["pass_auto_filter"].astype("category")
+    ad.obs["good_qc_cluster"] = 100
+    for max_mito in mito_thresholds[::-1]:
+        ad.obs.loc[
+            ad.obs[f"good_qc_cluster_mito{max_mito}"], "good_qc_cluster"
+        ] = max_mito
+    # ad.obs["good_qc_cluster"] = ad.obs["good_qc_cluster"].astype("category")
 
     ad.uns["qc_cluster_colors"] = sk._plot.make_palette(
         ad.obs["qc_cluster"].cat.categories.size
@@ -292,12 +298,13 @@ def parse_model_option(model_str):
     return models
 
 
-def process_sample(ad, qc_metrics, models, clst_res, min_frac):
+def process_sample(ad, qc_metrics, models, metrics_csv, clst_res, min_frac):
 
     qc_figs = run_QC(
         ad,
         qc_metrics=qc_metrics,
         models=models,
+        metrics_csv=metrics_csv,
         res=clst_res,
         threshold=min_frac,
     )
@@ -311,6 +318,7 @@ def main(args):
     models = parse_model_option(args.models)
     clst_res = float(args.clst_res)
     min_frac = float(args.min_frac)
+    metrics_csv = pd.read_csv(args.metrics_csv, index_col=0)
 
     input_h5ad = args.out_path 
     
@@ -341,7 +349,7 @@ def main(args):
         ctp_prob_sfig,
         ctp_pred_ufig,
         qc_cluster_ufig,
-    ) = process_sample(ad, qc_metrics, models, clst_res, min_frac)
+    ) = process_sample(ad, qc_metrics, models, metrics_csv, clst_res, min_frac)
 
     metric_vfig.savefig(
         f"{sid}.qc_plot.metric_vfig.png", bbox_inches="tight"
@@ -384,10 +392,17 @@ def main(args):
 
 if __name__ == "__main__":
     import argparse
+
+    def nullable_string(val):
+        if not val:
+            return None
+        return val
+
     my_parser = argparse.ArgumentParser()
     my_parser.add_argument("--debug", default=None, help="print debug information")
     my_parser.add_argument("--profile", default=None, help="print profile information")
     my_parser.add_argument("--qc_metrics", default=None, help="comma-separated list of QC metrics [default: log1p_n_counts,log1p_n_genes,percent_mito,percent_ribo,percent_hb,percent_top50,percent_soup,percent_spliced]")
+    my_parser.add_argument("--metrics_csv", type=nullable_string, nargs='?', help="csv file of metric cutoffs")
     my_parser.add_argument("--models", default=None, help="comma-separated <name>:<model.pkl> pairs giving celltypist models to use [default: ctp_pred:Immune_All_High.pkl]")
     my_parser.add_argument("--clst_res", default=None, help="resolution for QC clustering [default: 0.2]")
     my_parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
