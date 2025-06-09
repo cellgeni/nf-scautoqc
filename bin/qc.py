@@ -73,7 +73,7 @@ def run_QC(
     ad,
     qc_metrics=None,
     models=None,
-    metrics_csv=None
+    metrics_csv=None,
     res=0.2,
     threshold=0.5,
 ):
@@ -97,9 +97,8 @@ def run_QC(
     if "percent_spliced" in qc_metrics and "scrublet_score" in qc_metrics:
         metric_pairs.append(("percent_spliced", "scrublet_score"))
 
-    if models is None:
-        models = list(celltypist_models.keys())[0]
-    else:
+    if models is not None:
+        ctp_name = list(models.keys())[0]
         for name, mod in models.items():
             run_celltypist(ad, mod, min_prob=0.3, key_added=name)
 
@@ -111,7 +110,7 @@ def run_QC(
     for max_mito in mito_thresholds:
         if metrics_csv is not None:
             metrics=metrics_csv
-            metrics.loc['percent_mito']['max'] = max_mito
+            metrics.at['percent_mito', 'max'] = max_mito
         else:
             if 'spliced' in ad.layers and 'unspliced' in ad.layers:
                 metrics={
@@ -133,6 +132,7 @@ def run_QC(
         )
         sk._pipeline.clusterwise_qc(
             ad,
+            threshold=threshold,
             cell_qc_key=f"good_qc_cluster_mito{max_mito}",
             key_added=f"good_qc_cluster_mito{max_mito}",
         )
@@ -220,27 +220,31 @@ def run_QC(
     )
     pass_auto_sfig.suptitle("pass auto filter")
 
-    ctp_prob_sfig = sk.plot_qc_scatter(
-        ad,
-        metric_pairs=metric_pairs,
-        color_by=f"{ctp_name}_prob",
-        s=cell_size,
-        figsize=(3.5, 3),
-        return_fig=True,
-    )
-    ctp_prob_sfig.suptitle(f"{ctp_name} prob")
+    if models is not None:
+        ctp_prob_sfig = sk.plot_qc_scatter(
+            ad,
+            metric_pairs=metric_pairs,
+            color_by=f"{ctp_name}_prob",
+            s=cell_size,
+            figsize=(3.5, 3),
+            return_fig=True,
+        )
+        ctp_prob_sfig.suptitle(f"{ctp_name} prob")
 
-    sk.set_figsize((3, 3))
-    sc.pl.embedding(
-        ad,
-        basis="umap_qc",
-        color=[f"{ctp_name}_prob", f"{ctp_name}_uncertain", ctp_name],
-        size=30,
-        legend_fontsize=12,
-        wspace=0.4,
-        show=False,
-    )
-    ctp_pred_ufig = plt.gcf()
+        sk.set_figsize((3, 3))
+        sc.pl.embedding(
+            ad,
+            basis="umap_qc",
+            color=[f"{ctp_name}_prob", f"{ctp_name}_uncertain", ctp_name],
+            size=30,
+            legend_fontsize=12,
+            wspace=0.4,
+            show=False,
+        )
+        ctp_pred_ufig = plt.gcf()
+    else:
+        ctp_prob_sfig = None
+        ctp_pred_ufig = None
 
     sc.pl.embedding(
         ad,
@@ -315,7 +319,10 @@ def main(args):
     logging.debug(args)
 
     sid = args.sample_id
-    models = parse_model_option(args.models)
+    if args.models is not None:
+        models = parse_model_option(args.models)
+    else:
+        models = args.models
     clst_res = float(args.clst_res)
     min_frac = float(args.min_frac)
     metrics_csv = pd.read_csv(args.metrics_csv, index_col=0)
@@ -366,12 +373,13 @@ def main(args):
     pass_auto_sfig.savefig(
         f"{sid}.qc_plot.auto_sfig.png", bbox_inches="tight"
     )
-    ctp_prob_sfig.savefig(
-        f"{sid}.qc_plot.ctp_sfig.png", bbox_inches="tight"
-    )
-    ctp_pred_ufig.savefig(
-        f"{sid}.qc_plot.ctp_ufig.png", bbox_inches="tight"
-    )
+    if models is not None:
+        ctp_prob_sfig.savefig(
+            f"{sid}.qc_plot.ctp_sfig.png", bbox_inches="tight"
+        )
+        ctp_pred_ufig.savefig(
+            f"{sid}.qc_plot.ctp_ufig.png", bbox_inches="tight"
+        )
     qc_cluster_ufig.savefig(
         f"{sid}.qc_plot.cluster_ufig.png", bbox_inches="tight"
     )
