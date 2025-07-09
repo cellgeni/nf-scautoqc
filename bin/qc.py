@@ -81,27 +81,24 @@ def prepare_metric_pairs(qc_metrics):
     return metric_pairs
 
 
-def run_mito_qc_loop(ad, qc_metrics, metrics_csv, res, threshold):
+def run_mito_qc_loop(ad, qc_metrics, metrics_custom, res, threshold):
     mito_thresholds = [20, 50, 80]
 
     for max_mito in mito_thresholds:
-        if metrics_csv is not None:
-            metrics = metrics_csv.copy()
-            metrics.at['percent_mito', 'max'] = max_mito
+        if metrics_custom is not None:
+            metrics = {k: tuple(v.values()) for k, v in metrics_custom.to_dict(orient="index").items()}
+            metrics["percent_mito"] = (metrics["percent_mito"][0], max_mito, *metrics["percent_mito"][2:])
+            if not 'spliced' in ad.layers and 'unspliced' in ad.layers:
+                del metrics['percent_spliced']
         else:
-            if 'spliced' in ad.layers and 'unspliced' in ad.layers:
-                metrics = {
+            metrics = {
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
                     "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (50, 97.5, "log", "both", 0.1),
-                }
-            else:
-                metrics = {
-                    "n_counts": (1000, None, "log", "min_only", 0.1),
-                    "n_genes": (100, None, "log", "min_only", 0.1),
-                    "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
-                }
+            }
+        if 'spliced' in ad.layers and 'unspliced' in ad.layers:
+            del metrics['percent_spliced']
         sk._pipeline.cellwise_qc(
             ad,
             metrics,
@@ -252,7 +249,7 @@ def run_QC(
     ad,
     qc_metrics=None,
     models=None,
-    metrics_csv=None,
+    metrics_custom=None,
     res=0.2,
     threshold=0.5,
 ):
@@ -279,7 +276,7 @@ def run_QC(
 
     calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
 
-    run_mito_qc_loop(ad, qc_metrics, metrics_csv, res, threshold)
+    run_mito_qc_loop(ad, qc_metrics, metrics_custom, res, threshold)
 
     return generate_qc_plots(ad, qc_metrics, metric_pairs, models, ctp_name)
 
@@ -318,13 +315,13 @@ def parse_model_option(model_str):
     return models
 
 
-def process_sample(ad, qc_metrics, models, metrics_csv, clst_res, min_frac):
+def process_sample(ad, qc_metrics, models, metrics_custom, clst_res, min_frac):
 
     qc_figs = run_QC(
         ad,
         qc_metrics=qc_metrics,
         models=models,
-        metrics_csv=metrics_csv,
+        metrics_custom=metrics_custom,
         res=clst_res,
         threshold=min_frac,
     )
@@ -341,7 +338,7 @@ def main(args):
         models = args.models
     clst_res = float(args.clst_res)
     min_frac = float(args.min_frac)
-    metrics_csv = pd.read_csv(args.metrics_csv, index_col=0)
+    metrics_custom = pd.read_csv(args.metrics_csv, index_col=0)
 
     input_h5ad = args.out_path 
     
@@ -372,7 +369,7 @@ def main(args):
         ctp_prob_sfig,
         ctp_pred_ufig,
         qc_cluster_ufig,
-    ) = process_sample(ad, qc_metrics, models, metrics_csv, clst_res, min_frac)
+    ) = process_sample(ad, qc_metrics, models, metrics_custom, clst_res, min_frac)
 
     metric_vfig.savefig(
         f"{sid}.qc_plot.metric_vfig.png", bbox_inches="tight"
