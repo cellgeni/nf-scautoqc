@@ -69,87 +69,68 @@ def calculate_qc(ad, run_scrublet=True):
         sk.run_scrublet(ad)
 
 
-def run_QC(
-    ad,
-    qc_metrics=None,
-    models=None,
-    metrics_csv=None,
-    res=0.2,
-    threshold=0.5,
-):
-    if qc_metrics is None:
-        qc_metrics = [
-            "log1p_n_counts",
-            "log1p_n_genes",
-            "percent_mito",
-            "percent_ribo",
-            "percent_hb",
-            "percent_top50",
-            "percent_soup",
-            "percent_spliced",
-        ]
-
+def prepare_metric_pairs(qc_metrics):
     metric_pairs = [("log1p_n_counts", qm) for qm in qc_metrics[1:]]
     if "percent_mito" in qc_metrics and "percent_ribo" in qc_metrics:
         metric_pairs.append(("log(percent_mito)", "percent_ribo"))
-    if "percent_soup" in qc_metrics and "percent_spliced" in qc_metrics:
-        metric_pairs.append(("log(percent_soup)", "percent_spliced"))
-    if "percent_spliced" in qc_metrics and "scrublet_score" in qc_metrics:
-        metric_pairs.append(("percent_spliced", "scrublet_score"))
+    if 'spliced' in ad.layers and 'unspliced' in ad.layers:
+        if "percent_soup" in qc_metrics and "percent_spliced" in qc_metrics:
+            metric_pairs.append(("log(percent_soup)", "percent_spliced"))
+        if "percent_spliced" in qc_metrics and "scrublet_score" in qc_metrics:
+            metric_pairs.append(("percent_spliced", "scrublet_score"))
+    return metric_pairs
 
-    if models is not None:
-        ctp_name = list(models.keys())[0]
-        for name, mod in models.items():
-            run_celltypist(ad, mod, min_prob=0.3, key_added=name)
 
-    calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
-    sk._pipeline.generate_qc_clusters(ad, metrics=qc_metrics, res=res)
-
+def run_mito_qc_loop(ad, qc_metrics, metrics_csv, res, threshold):
     mito_thresholds = [20, 50, 80]
 
     for max_mito in mito_thresholds:
         if metrics_csv is not None:
-            metrics=metrics_csv
+            metrics = metrics_csv.copy()
             metrics.at['percent_mito', 'max'] = max_mito
         else:
             if 'spliced' in ad.layers and 'unspliced' in ad.layers:
-                metrics={
+                metrics = {
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
                     "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (50, 97.5, "log", "both", 0.1),
-                    }
+                }
             else:
-                metrics={
+                metrics = {
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
                     "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
-                    }
+                }
         sk._pipeline.cellwise_qc(
             ad,
             metrics,
-            cell_qc_key=f"good_qc_cluster_mito{max_mito}"
+            cell_qc_key=f"good_qc_cell_mito{max_mito}"
         )
-        sk._pipeline.clusterwise_qc(
+        sk._pipeline.multi_resolution_cluster_qc(
             ad,
-            threshold=threshold,
-            cell_qc_key=f"good_qc_cluster_mito{max_mito}",
+            metrics=metrics,
+            cell_qc_key=f"good_qc_cell_mito{max_mito}",
             key_added=f"good_qc_cluster_mito{max_mito}",
+            consensus_call_key=f"consensus_passed_qc_mito{max_mito}",
+            consensus_frac_key=f"consensus_fraction_mito{max_mito}",
         )
         ad.obs[f"pass_auto_filter_mito{max_mito}"] = ad.obs[f"good_qc_cluster_mito{max_mito}"]
+
     ad.obs["pass_auto_filter"] = 100
     for max_mito in mito_thresholds[::-1]:
         ad.obs.loc[
             ad.obs[f"pass_auto_filter_mito{max_mito}"], "pass_auto_filter"
         ] = max_mito
-    # ad.obs["pass_auto_filter"] = ad.obs["pass_auto_filter"].astype("category")
+
     ad.obs["good_qc_cluster"] = 100
     for max_mito in mito_thresholds[::-1]:
         ad.obs.loc[
             ad.obs[f"good_qc_cluster_mito{max_mito}"], "good_qc_cluster"
         ] = max_mito
-    # ad.obs["good_qc_cluster"] = ad.obs["good_qc_cluster"].astype("category")
 
+
+def generate_qc_plots(ad, qc_metrics, metric_pairs, models, ctp_name):
     ad.uns["qc_cluster_colors"] = sk._plot.make_palette(
         ad.obs["qc_cluster"].cat.categories.size
     )
@@ -220,6 +201,8 @@ def run_QC(
     )
     pass_auto_sfig.suptitle("pass auto filter")
 
+    ctp_prob_sfig = None
+    ctp_pred_ufig = None
     if models is not None:
         ctp_prob_sfig = sk.plot_qc_scatter(
             ad,
@@ -242,9 +225,6 @@ def run_QC(
             show=False,
         )
         ctp_pred_ufig = plt.gcf()
-    else:
-        ctp_prob_sfig = None
-        ctp_pred_ufig = None
 
     sc.pl.embedding(
         ad,
@@ -266,6 +246,42 @@ def run_QC(
         ctp_pred_ufig,
         qc_cluster_ufig,
     )
+
+
+def run_QC(
+    ad,
+    qc_metrics=None,
+    models=None,
+    metrics_csv=None,
+    res=0.2,
+    threshold=0.5,
+):
+    if qc_metrics is None:
+        qc_metrics = [
+            "log1p_n_counts",
+            "log1p_n_genes",
+            "percent_mito",
+            "percent_ribo",
+            "percent_hb",
+            "percent_top50",
+            "percent_soup",
+            "percent_spliced",
+        ]
+
+    metric_pairs = prepare_metric_pairs(qc_metrics)
+
+    if models is not None:
+        ctp_name = list(models.keys())[0]
+        for name, mod in models.items():
+            run_celltypist(ad, mod, min_prob=0.3, key_added=name)
+    else:
+        ctp_name = None
+
+    calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
+
+    run_mito_qc_loop(ad, qc_metrics, metrics_csv, res, threshold)
+
+    return generate_qc_plots(ad, qc_metrics, metric_pairs, models, ctp_name)
 
 
 def run_celltypist(ad, model, min_prob=0.3, key_added="ctp_pred"):
