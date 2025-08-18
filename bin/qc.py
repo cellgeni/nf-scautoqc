@@ -469,7 +469,7 @@ def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, thresho
     elif qc_mode == "multires":
         run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold)
     elif qc_mode == "combined":
-        run_qc_mito_loop_combined(ad, qc_metrics, metrics_custom, threshold)
+        run_qc_combined(ad, qc_metrics, metrics_custom, threshold)
     else:
         raise ValueError(f"Unknown QC mode: {qc_mode}")
 
