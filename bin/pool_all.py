@@ -6,21 +6,24 @@ Usage: pool.py --samples sample1,sample2... --objects sample1,sample2...
 Options:
   --samples           samples separated by comma
   --objects           object paths separated by comma
+  --ranges            ranges csv paths separated by comma
 """
 
 
 import scanpy as sc
+import pandas as pd
 import gc
 import argparse
 
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--samples", default=None, help="samples separated by comma")
 my_parser.add_argument("--objects", default=None, help="object paths separated by comma")
-my_parser.add_argument("--ss_out", default=None, help="type of sequencing")
+my_parser.add_argument("--ranges", default=None, help="ranges csv paths separated by comma")
 args = my_parser.parse_args()
 
 samples = sorted(args.samples.split(','))
 objects = args.objects.split(',')
+ranges = args.ranges.split(',')
 
 if len(samples) != len(objects):
     objects = [i for i in objects if i.startswith(tuple(samples))]
@@ -39,6 +42,33 @@ pooled_ad = sc.AnnData.concatenate(
     batch_categories=samples
 )
 
+wide_series_by_sample = {}
+
+for r in ranges:
+    df = pd.read_csv(r, skipinitialspace=True)
+
+    first_col = df.columns[0]
+    sample = first_col.split("|", 1)[1]
+
+    s = (
+        df.rename(columns={first_col: "metric"})
+          .set_index("metric")
+          .stack()
+    )
+    s.index = pd.MultiIndex.from_tuples(s.index, names=["metric", "bound"])
+    wide_series_by_sample[sample] = s
+
+wide = pd.DataFrame(wide_series_by_sample).T
+wide.index.name = "sample"
+
+wide = wide.sort_index()
+
+metrics = list(dict.fromkeys(wide.columns.get_level_values(0)))  # preserves first-seen order
+col_order = pd.MultiIndex.from_product([metrics, ["low", "high"]], names=["metric", "bound"])
+wide = wide.reindex(columns=col_order)
+
+wide.to_csv("qc_metrics.csv")   # columns like ('n_counts','low'), ('n_counts','high'), ...
+  
 ads.clear()
 gc.collect()
 
