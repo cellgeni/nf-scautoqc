@@ -166,22 +166,61 @@ process integrate {
   """
 }
 
+// Function to detect CSV format and create standardized channels
+def createInputChannels(samplefile) {
+    // Read first line to detect format
+    def firstLine = file(samplefile).readLines()[0]
+    def hasHeaders = firstLine.toLowerCase().contains('sampleid') || 
+                    firstLine.toLowerCase().contains('path_to_starsolo') ||
+                    firstLine.toLowerCase().contains('path_to_cellranger')
+    
+    if (hasHeaders) {
+        // New format: CSV with full column headers
+        return Channel.fromPath(samplefile)
+            .splitCsv(header: true)
+            .multiMap { row ->
+                samp: row.sampleID
+                cr_gene: row.path_to_cellranger ? 
+                    "${row.path_to_cellranger}/filtered_feature_bc_matrix.h5" : 
+                    "${row.path_to_starsolo}/output/${params.ss_out}/filtered/"
+                cr_velo: row.path_to_starsolo ? 
+                    "${row.path_to_starsolo}/output/Velocyto/raw/" : []
+                cb_h5: row.path_to_cellbender ? 
+                    "${row.path_to_cellbender}/cellbender_out_filtered.h5" : []
+                ss_gene: row.path_to_starsolo ? 
+                    "${row.path_to_starsolo}/output/${params.ss_out}/filtered/" : []
+                cell_or_nuclei: row.cell_or_nuclei ?: 'cells'
+            }
+    } else {
+        // Legacy format: CSV with just sampleIDs + prefixes
+        return Channel.fromPath(samplefile)
+            .splitCsv(header: false)
+            .flatten()
+            .map { it ->
+                def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
+                def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
+                [it, resolvedPath]
+            }
+            .multiMap { it, resolvedPath ->
+                samp: it
+                cr_gene: "${params.ss_prefix}" == "" ? 
+                    "${resolvedPath}/filtered_feature_bc_matrix.h5" : 
+                    "${resolvedPath}/output/${params.ss_out}/filtered/"
+                cr_velo: "${params.ss_prefix}" == "" ? [] : 
+                    "${resolvedPath}/output/Velocyto/raw/"
+                cb_h5: "${params.cb_prefix}" == "" ? [] : 
+                    "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
+                ss_gene: "${params.ss_prefix}" == "" ? [] : 
+                    "${resolvedPath}/output/${params.ss_out}/filtered/"
+                cell_or_nuclei: 'cells' // default value for legacy format
+            }
+    }
+}
+
+
 workflow all {
-  Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv(header: false) 
-       .flatten()
-       .map { it ->
-          def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
-          def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
-          [it, resolvedPath]
-      }
-       .multiMap { it, resolvedPath -> 
-           samp: it
-           cr_gene: "${params.ss_prefix}" == "" ? "${resolvedPath}/filtered_feature_bc_matrix.h5" : "${resolvedPath}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}" == "" ? [] : "${resolvedPath}/output/Velocyto/filtered/"
-           cb_h5: "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
-       }
-       .set {samples}
+  def samples = createInputChannels("${params.SAMPLEFILE}")
+
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
@@ -191,21 +230,8 @@ workflow all {
 }
 
 workflow only_qc {
-  Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv(header: false) 
-       .flatten()
-       .map { it ->
-          def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
-          def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
-          [it, resolvedPath]
-      }
-       .multiMap { it, resolvedPath -> 
-           samp: it
-           cr_gene: "${params.ss_prefix}" == "" ? "${resolvedPath}/filtered_feature_bc_matrix.h5" : "${resolvedPath}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}" == "" ? [] : "${resolvedPath}/output/Velocyto/filtered/"
-           cb_h5: "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
-       }
-       .set {samples}
+  def samples = createInputChannels("${params.SAMPLEFILE}")
+
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
