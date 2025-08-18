@@ -17,7 +17,7 @@ process gather_matrices {
 
   script:
   """
-  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --ss_out ${params.ss_out}
+  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5}
   """
 }
 
@@ -30,12 +30,12 @@ process run_qc {
   tuple val(samp), path(gath_out)
 
   output:
-  tuple val(samp), path("*_postqc.h5ad"), path("*-scr"), emit: samp_obj
+  tuple val(samp), path("*_postqc.h5ad"), path("*-scr"), path("*.csv"), emit: samp_obj
   path("*.png")
 
   script:
   """
-  python ${baseDir}/bin/qc.py --clst_res ${params.cluster_res} --min_frac ${params.min_frac} --sample_id ${samp} --out_path ${gath_out}
+  python ${baseDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out}
   """
 }
 
@@ -78,6 +78,7 @@ process find_doublets {
 process pool_all {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
   memory = { 
         def numSamples = samp.size()  // Use the size of the input list
@@ -87,13 +88,15 @@ process pool_all {
   input:
   val(samp)
   path(qc_out)
+  path(ranges_out)
 
   output:
-  path("scautoqc_pooled.h5ad")
+  path("scautoqc_pooled.h5ad"), emit: obj
+  path("qc_metrics.csv")
 
   script:
   """
-  python ${baseDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ss_out ${params.ss_out}
+  python ${baseDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ranges ${ranges_out.join(",")}
   """
 }
 
@@ -108,7 +111,6 @@ process add_metadata {
   input:
   path(pool_out)
   path(scr_out)
-  val(meta_path)
 
   output:
   path("scautoqc_pooled_doubletflagged_metaadded.h5ad"), emit: obj
@@ -118,7 +120,7 @@ process add_metadata {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${meta_path}
+  python ${baseDir}/bin/add_scrublet_meta_test.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
   """
 }
 
@@ -183,8 +185,8 @@ workflow all {
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] },run_qc.out.samp_obj.collect() { it[1] })
-  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
+  add_metadata(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, params.metadata)
   integrate(add_metadata.out.obj, params.batch_key)
 }
 
@@ -220,32 +222,19 @@ workflow after_qc {
   Channel.fromPath("${params.scrublet_path}/*.csv")
        .flatten()
        .set {scrublets}
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] },run_qc.out.samp_obj.collect() { it[1] })
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
   add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
   integrate(add_metadata.out.obj, params.batch_key)
 }
 
 workflow until_integrate {
-  Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv(header: false) 
-       .flatten()
-       .map { it ->
-          def prefix = params.ss_prefix ? params.ss_prefix : params.cr_prefix
-          def resolvedPath = "readlink -f ${prefix}/${it}".execute().text.trim()
-          [it, resolvedPath]
-      }
-       .multiMap { it, resolvedPath -> 
-           samp: it
-           cr_gene: "${params.ss_prefix}" == "" ? "${resolvedPath}/filtered_feature_bc_matrix.h5" : "${resolvedPath}/output/${params.ss_out}/filtered/"
-           cr_velo: "${params.ss_prefix}" == "" ? [] : "${resolvedPath}/output/Velocyto/filtered/"
-           cb_h5: "${params.cb_prefix}" == "" ? [] : "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
-       }
-       .set {samples}
+  def samples = createInputChannels("${params.SAMPLEFILE}")
+
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] },run_qc.out.samp_obj.collect() { it[1] })
-  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
+  add_metadata(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
 }
 
 workflow only_integrate {
@@ -260,6 +249,6 @@ workflow subset {
        .set {samples}
   subset_object(samples)
   find_doublets(subset_object.out.samp_obj)
-  pool_all(subset_object.out.samp_obj.collect(){ it[0] },subset_object.out.samp_obj.collect() { it[1] })
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
   add_metadata_basic(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
 }
