@@ -418,10 +418,10 @@ def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, thresho
 
     ctp_name = None
     if ctp_models is not None:
-        logging.info("- Running Celltypist for %d models", len(ctp_models.items()))
+        logging.info(f"- Running Celltypist for {len(ctp_models.items())} models")
         ctp_name = list(ctp_models.keys())[-1]
         for name, mod in ctp_models.items():
-            logging.info("- Running [%s]", name)
+            logging.info(f"- Running [{name}]")
             run_celltypist(ad, mod, min_prob=0.3, key_added=name)
     else:
         ctp_name = None
@@ -429,7 +429,7 @@ def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, thresho
     logging.info("Calculating QC metrics")
     calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
 
-    logging.info("Starting QC: mode=%s", qc_mode)
+    logging.info(f"Starting QC: mode={qc_mode}")
     if qc_mode == "original":
         run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold)
     elif qc_mode == "multires":
@@ -470,13 +470,13 @@ def main(args):
 
     sid = args.sample_id
     if args.celltypist_model and ":" in args.celltypist_model:
-        logging.info("Using custom celltypist models: %s", args.celltypist_model)
+        logging.info(f"Using custom celltypist models: {args.celltypist_model}")
         ctp_models = parse_model_option(args.celltypist_model)
     elif args.celltypist_model:
         # Treat as predefined set key if provided
         ctp_models = celltypist_models.get(args.celltypist_model)
         if ctp_models is None:
-            logging.info("Unknown predefined celltypist set '%s'; skipping celltypist", args.celltypist_model)
+            logging.info(f"Unknown predefined celltypist set '{args.celltypist_model}'; skipping celltypist")
     else:
         ctp_models = None
     
@@ -486,7 +486,7 @@ def main(args):
         min_frac = float(0.5)
 
     if args.metrics_csv is not None:
-        logging.info("Using custom metrics from %s", args.metrics_csv)
+        logging.info(f"Using custom metrics from {args.metrics_csv}")
         metrics_custom = pd.read_csv(Path(args.metrics_csv), index_col=0)
     else:
         logging.info("Using default metrics")
@@ -532,7 +532,7 @@ def main(args):
 
     ad.obs['sampleID'] = sid
     
-    logging.info(f"Saving the final ranges to {sid}_metrics.txt")
+    logging.info(f"Saving the final ranges to {sid}_metrics.csv")
     ad.uns['scautoqc_ranges'] = ad.uns['scautoqc_ranges'].applymap(lambda x: x.item() if hasattr(x, "item") else x)
 
     ad.uns['qc_mode'] = qc_mode
