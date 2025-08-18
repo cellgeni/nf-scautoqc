@@ -40,7 +40,7 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
 
     if cr_velo_filtered_mtx is not None:
         # If Velocyto output exists, process it and merge into h5ad
-        cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))
+        cr_velo_filtered_ad = sk.read_velocyto(os.path.realpath(cr_velo_filtered_mtx))[cr_gene_filtered_ad.obs_names].copy()
         logging.info("cr_velo_filtered_mtx done")
 
     if cb_filtered_h5 is not None:
@@ -55,79 +55,50 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
         k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
         k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
 
-        if args.ss_out == 'GeneFull':
-            # Create AnnData object with GeneFull output
+        ad = anndata.AnnData(
+            X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
+            obs=cb_gene_filtered_ad.obs[k_cb].copy(),
+            var=cb_gene_filtered_ad.var.copy(),
+            layers={
+                "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
+                "spliced": cr_velo_filtered_ad.X[np.where(k_cr)[0]],
+                "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
+                "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
+            }
+        )
+        for layer in ("spliced", "unspliced", "ambiguous"):
+            ad.layers[layer].eliminate_zeros()
+        return ad
+    else:  # If CellBender output is not provided
+        if cr_velo_filtered_mtx is not None:
             ad = anndata.AnnData(
-                X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
-                obs=cb_gene_filtered_ad.obs[k_cb].copy(),
-                var=cb_gene_filtered_ad.var.copy(),
+                X=cr_gene_filtered_ad.X,
+                obs=cr_gene_filtered_ad.obs.copy(),
+                var=cr_gene_filtered_ad.var.copy(),
                 layers={
-                    "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
-                }
-            )
-        else:
-            # Create AnnData object with spliced/unspliced/ambiguous layers
-            ad = anndata.AnnData(
-                X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
-                obs=cb_gene_filtered_ad.obs[k_cb].copy(),
-                var=cb_gene_filtered_ad.var.copy(),
-                layers={
-                    "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
-                    "spliced": cr_velo_filtered_ad.X[np.where(k_cr)[0]],
-                    "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
-                    "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
+                    "raw": cr_gene_filtered_ad.X,
+                    "spliced": cr_velo_filtered_ad.X,
+                    "unspliced": cr_velo_filtered_ad.layers["unspliced"],
+                    "ambiguous": cr_velo_filtered_ad.layers["ambiguous"],
                 }
             )
             for layer in ("spliced", "unspliced", "ambiguous"):
                 ad.layers[layer].eliminate_zeros()
-        return ad
-    else:  # If CellBender output is not provided
-        if cr_velo_filtered_mtx is not None:
-            if args.ss_out == 'GeneFull':
-                ad = anndata.AnnData(
-                    X=cr_gene_filtered_ad.X,
-                    obs=cr_gene_filtered_ad.obs.copy(),
-                    var=cr_gene_filtered_ad.var.copy(),
-                )
-            else:
-                ad = anndata.AnnData(
-                    X=cr_gene_filtered_ad.X,
-                    obs=cr_gene_filtered_ad.obs.copy(),
-                    var=cr_gene_filtered_ad.var.copy(),
-                    layers={
-                        "raw": cr_gene_filtered_ad.X,
-                        "spliced": cr_velo_filtered_ad.X,
-                        "unspliced": cr_velo_filtered_ad.layers["unspliced"],
-                        "ambiguous": cr_velo_filtered_ad.layers["ambiguous"],
-                    }
-                )
-                for layer in ("spliced", "unspliced", "ambiguous"):
-                    ad.layers[layer].eliminate_zeros()
             return ad
         else:
             # If neither CellBender nor velocyto data is provided
-            if args.ss_out == 'GeneFull':
-                ad = anndata.AnnData(
-                    X=cr_gene_filtered_ad.X,
-                    obs=cr_gene_filtered_ad.obs.copy(),
-                    var=cr_gene_filtered_ad.var.copy(),
-                    layers={
-                        "raw": cr_gene_filtered_ad.X
-                    }
-                )
-            else:
-                ad = anndata.AnnData(
-                    X=cr_gene_filtered_ad.X,
-                    obs=cr_gene_filtered_ad.obs.copy(),
-                    var=cr_gene_filtered_ad.var.copy(),
-                    layers={
-                        "raw": cr_gene_filtered_ad.X,
-                    }
-                )
+            ad = anndata.AnnData(
+                X=cr_gene_filtered_ad.X,
+                obs=cr_gene_filtered_ad.obs.copy(),
+                var=cr_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X,
+                }
+            )
             return ad
 
 def main(args):
-    logging.debug(args)
+    logging.info(args)
 
     cr_gene_filtered_mtx = args.cr_gene
     cr_velo_filtered_mtx = args.cr_velo
