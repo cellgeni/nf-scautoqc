@@ -130,12 +130,20 @@ def run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold):
 
     for max_mito in MITO_THRESHOLDS:
         if metrics_custom is None:
-            metrics = {
-                "n_counts": (1000, None, "log", "min_only", 0.1),
-                "n_genes": (100, None, "log", "min_only", 0.1),
-                "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
-                "percent_spliced": (50, 97.5, "log", "both", 0.1),
-            }
+            if ad.uns['cell_or_nuclei'] == 'cell':
+                metrics = {
+                    "n_counts": (1000, None, "log", "min_only", 0.1),
+                    "n_genes": (100, None, "log", "min_only", 0.1),
+                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_spliced": (50, 97.5, "log", "both", 0.1),
+                }
+            elif ad.uns['cell_or_nuclei'] == 'nuclei':
+                metrics = {
+                    "n_counts": (300, None, "log", "min_only", 0.1),
+                    "n_genes": (100, None, "log", "min_only", 0.1),
+                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_spliced": (0.01, 100, "log", "max_only", 0.1),
+                }
         else:
             metrics = {k: tuple(v.values()) for k, v in metrics_custom.to_dict(orient="index").items()}
             metrics["percent_mito"] = (metrics["percent_mito"][0], max_mito, *metrics["percent_mito"][2:])
@@ -169,12 +177,20 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold):
     sk._pipeline.generate_qc_clusters(ad, metrics=qc_metrics)
 
     if metrics_custom is None:
-        metrics = {
-            "n_counts": (1000, None, "log", "min_only", 0.1),
-            "n_genes": (100, None, "log", "min_only", 0.1),
-            "percent_mito": (0.1, 20, "log", "max_only", 0.1),
-            "percent_spliced": (50, 97.5, "log", "both", 0.1),
-        }
+        if ad.uns['cell_or_nuclei'] == 'cell':
+            metrics = {
+                "n_counts": (1000, None, "log", "min_only", 0.1),
+                "n_genes": (100, None, "log", "min_only", 0.1),
+                "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                "percent_spliced": (50, 97.5, "log", "both", 0.1),
+            }
+        elif ad.uns['cell_or_nuclei'] == 'nuclei':
+            metrics = {
+                "n_counts": (300, None, "log", "min_only", 0.1),
+                "n_genes": (100, None, "log", "min_only", 0.1),
+                "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                "percent_spliced": (0.01, 100, "log", "max_only", 0.1),
+            }
     else:
         metrics = {k: tuple(v.values()) for k, v in metrics_custom.to_dict(orient="index").items()}
     if not (('spliced' in ad.layers) and ('unspliced' in ad.layers)):
@@ -198,17 +214,25 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold):
     print("Best consensus overlap found for threshold "+str(consensus_threshold))
     ad.obs["consensus_passed_qc"] = ad.obs["consensus_fraction"] >= consensus_threshold
 
-def run_qc_mito_loop_combined(ad, qc_metrics, metrics_custom, threshold):
+def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
     """Combined original + multi-resolution QC across mitochondrial thresholds."""
 
     for max_mito in MITO_THRESHOLDS:
         if metrics_custom is None:
-            metrics = {
-                "n_counts": (1000, None, "log", "min_only", 0.1),
-                "n_genes": (100, None, "log", "min_only", 0.1),
-                "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
-                "percent_spliced": (50, 97.5, "log", "both", 0.1),
-            }
+            if ad.uns['cell_or_nuclei'] == 'cell':
+                metrics = {
+                    "n_counts": (1000, None, "log", "min_only", 0.1),
+                    "n_genes": (100, None, "log", "min_only", 0.1),
+                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_spliced": (50, 97.5, "log", "both", 0.1),
+                }
+            elif ad.uns['cell_or_nuclei'] == 'nuclei':
+                metrics = {
+                    "n_counts": (300, None, "log", "min_only", 0.1),
+                    "n_genes": (100, None, "log", "min_only", 0.1),
+                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_spliced": (0.01, 100, "log", "max_only", 0.1),
+                }
         else:
             metrics = {k: tuple(v.values()) for k, v in metrics_custom.to_dict(orient="index").items()}
             metrics["percent_mito"] = (metrics["percent_mito"][0], max_mito, *metrics["percent_mito"][2:])
