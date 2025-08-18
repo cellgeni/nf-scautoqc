@@ -577,7 +577,8 @@ def main(args):
     ad.write(f"{sid}_postqc.h5ad", compression="gzip")
 
     logging.info("Checking whether this sample has good QC clusters in general")
-    if ad.obs['good_qc_cluster_mito80'].mean() < 0.25 or (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
+    condition_qc = 'consensus_passed_qc' if qc_mode == 'multires' else 'good_qc_cluster_mito80'
+    if (ad.obs[condition_qc].mean() < 0.25) or (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
         Path(f'{sid}_no-scr').touch()
     else:
         Path(f'{sid}_yes-scr').touch()
