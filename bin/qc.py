@@ -568,6 +568,8 @@ def main(args):
     
     logging.info(f"Saving the final ranges to {sid}_metrics.csv")
     ad.uns['scautoqc_ranges'] = ad.uns['scautoqc_ranges'].applymap(lambda x: x.item() if hasattr(x, "item") else x)
+    ad.uns['scautoqc_ranges'].index.name = f'metrics|{sid}'
+    ad.uns['scautoqc_ranges'].to_csv(f"{sid}_metrics.csv")
 
     ad.uns['qc_mode'] = qc_mode
 
