@@ -4,10 +4,6 @@
 #Usage: gather_matrices.py [options] 
 #
 #Options:
-#  --debug            print debug information
-#  --profile          print profile information
-#  --dry              print starsolo and cellbender outputs to gather
-#  --force            force overwrite if output exists
 #  --cr_gene   path to 10x matrix filtered folder
 #  --cr_velo    path to velocyto filtered folder
 #  --cb_h5    path to cellbender h5#"""
@@ -269,45 +265,35 @@ def main(args):
     if not os.path.exists(cr_gene_filtered_mtx):
         raise FileNotFoundError(cr_gene_filtered_mtx)
 
-    if args.dry:
-        print(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
+    ad = gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
+    if args.cell_or_nuclei is not None:
+        ad.uns['cell_or_nuclei'] = args.cell_or_nuclei
     else:
-        if os.path.exists(output_h5ad) and not args.force:
-            logging.info(output_h5ad + " exists, skip gathering without --force")
-        else:
-            ad = gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
-            ad.write(output_h5ad, compression="gzip")
+        print("No cell or nuclei information provided, assuming 'cell'")
+        ad.uns['cell_or_nuclei'] = 'cell'
 
-            logging.info("done")
+    ad.write(output_h5ad, compression="gzip")
+
+    logging.info("done")
 
     return 0
 
 if __name__ == '__main__':
     import argparse
     my_parser = argparse.ArgumentParser()
-    my_parser.add_argument("--debug", default=None, help="print debug information")
-    my_parser.add_argument("--profile", default=None, help="print profile information")
-    my_parser.add_argument("--dry", default=None, help="print starsolo and cellbender outputs to gather")
-    my_parser.add_argument("--force", default=None, help="force overwrite if output exists")
     my_parser.add_argument("--cr_gene", default=None, help="path to 10x matrix filtered folder")
     my_parser.add_argument("--cr_velo", default=None, const=None, nargs='?', help="path to velocyto filtered folder")
     my_parser.add_argument("--cb_h5", default=None, const=None, nargs='?', help="path to cellbender h5")
-    my_parser.add_argument("--ss_out", default=None, help="starsolo output to use")
+    my_parser.add_argument("--cell_or_nuclei", default=None, const=None, nargs='?', help="path to cellbender h5")
+
     args = my_parser.parse_args()
     try:
-        if args.debug:
-            logLevel = logging.DEBUG
-        else:
-            logLevel = logging.INFO
+        logLevel = logging.INFO
         logging.basicConfig(
             level=logLevel,
             format='%(asctime)s; %(levelname)s; %(funcName)s; %(message)s',
             datefmt='%y-%m-%d %H:%M:%S')
-        if args.profile:
-            import cProfile
-            cProfile.run('main(args)')
-        else:
-            main(args)
+        main(args)
     except KeyboardInterrupt:
         logging.warning('Interrupted')
         sys.exit(1)
