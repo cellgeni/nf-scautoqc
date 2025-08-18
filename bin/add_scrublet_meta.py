@@ -27,6 +27,8 @@ my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--obj", default=None, help="path of the pooled h5ad")
 my_parser.add_argument("--scr", default=None, help="path of scrublet outputs")
 my_parser.add_argument("--meta", default=None, help="csv of metadata of the samples", nargs='?')
+my_parser.add_argument("--qc_mode", default=None, help="QC mode")
+
 args = my_parser.parse_args()
 
 pooled_ad = sc.read(args.obj)
@@ -83,89 +85,196 @@ pooled_ad0.var["tcr"] = pooled_ad0.var_names.isin(tcr_genes)
 
 sk.clear_colors(pooled_ad0)
 
-sample_passqc_df = pd.concat(
-    [
-        pooled_ad0.obs.groupby("sampleID").apply(
-            lambda df: df.good_qc_cluster_mito80.mean()
-        ),
-        pooled_ad0.obs.groupby("sampleID").apply(
-            lambda df: df.good_qc_cluster_mito50.mean()
-        ),
-        pooled_ad0.obs.groupby("sampleID").apply(
-            lambda df: df.good_qc_cluster_mito20.mean()
-        ),
-        pooled_ad0.obs.groupby("sampleID").apply(
-            lambda df: df.good_qc_cluster_mito80.sum()
-        ),
-        pooled_ad0.obs.groupby("sampleID").apply(
-            lambda df: df.good_qc_cluster_mito50.sum()
-        ),
-        pooled_ad0.obs.groupby("sampleID").apply(
-            lambda df: df.good_qc_cluster_mito20.sum()
-        ),
-        pooled_ad0.obs.sampleID.value_counts(sort=False),
-        pooled_ad0.obs[["sampleID"]].drop_duplicates().set_index("sampleID"),
-    ],
-    axis=1,
-).rename(
-    columns={
-        0: "passQC_frac80",
-        1: "passQC_frac50",
-        2: "passQC_frac20",
-        3: "passQC_count80",
-        4: "passQC_count50",
-        5: "passQC_count20",
-        "count": "total_cell_count",
-    }
-)
-
+if args.qc_mode == 'original':
+    sample_passqc_df = pd.concat(
+        [
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.good_qc_cluster_mito80.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.good_qc_cluster_mito50.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.good_qc_cluster_mito20.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.good_qc_cluster_mito80.sum()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.good_qc_cluster_mito50.sum()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.good_qc_cluster_mito20.sum()
+            ),
+            pooled_ad0.obs.sampleID.value_counts(sort=False),
+            pooled_ad0.obs[["sampleID"]].drop_duplicates().set_index("sampleID"),
+        ],
+        axis=1,
+    ).rename(
+        columns={
+            0: "passQC_frac80",
+            1: "passQC_frac50",
+            2: "passQC_frac20",
+            3: "passQC_count80",
+            4: "passQC_count50",
+            5: "passQC_count20",
+            "count": "total_cell_count",
+        }
+    )
+elif args.qc_mode == 'combined':
+    sample_passqc_df = pd.concat(
+        [
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc_mito80.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc_mito50.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc_mito20.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc_mito80.sum()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc_mito50.sum()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc_mito20.sum()
+            ),
+            pooled_ad0.obs.sampleID.value_counts(sort=False),
+            pooled_ad0.obs[["sampleID"]].drop_duplicates().set_index("sampleID"),
+        ],
+        axis=1,
+    ).rename(
+        columns={
+            0: "passQC_frac80",
+            1: "passQC_frac50",
+            2: "passQC_frac20",
+            3: "passQC_count80",
+            4: "passQC_count50",
+            5: "passQC_count20",
+            "count": "total_cell_count",
+        }
+    )
+else:
+    sample_passqc_df = pd.concat(
+        [
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc.mean()
+            ),
+            pooled_ad0.obs.groupby("sampleID").apply(
+                lambda df: df.consensus_passed_qc.sum()
+            ),
+            pooled_ad0.obs.sampleID.value_counts(sort=False),
+            pooled_ad0.obs[["sampleID"]].drop_duplicates().set_index("sampleID"),
+        ],
+        axis=1,
+    ).rename(
+        columns={
+            0: "passQC_frac",
+            1: "passQC_count",
+            "count": "total_cell_count",
+        }
+    )
+    
 sample_passqc_df.to_csv('sample_passqc_df.csv')
-
 sk.set_figsize((5, 5))
-ax = sn.scatterplot(
-    data=sample_passqc_df,
-    x="total_cell_count",
-    y="passQC_count80",
-    hue=sample_passqc_df.index,
-    size="passQC_frac80",
-    sizes=(10, 40),
-)
-ax.set_xscale("symlog")
-ax.set_yscale("symlog")
-ax.axline((1e3, 1e3), (1e4, 1e4), c="grey", linestyle="--")
-ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), ncol=2)
-plt.savefig("scatterplot_sample_passqc.png")
 
+if args.qc_mode in ('original', 'combined'):
+    ax = sn.scatterplot(
+        data=sample_passqc_df,
+        x="total_cell_count",
+        y="passQC_count80",
+        hue=sample_passqc_df.index,
+        size="passQC_frac80",
+        sizes=(10, 40),
+    )
+    ax.set_xscale("symlog")
+    ax.set_yscale("symlog")
+    ax.axline((1e3, 1e3), (1e4, 1e4), c="grey", linestyle="--")
+    ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), ncol=2)
+    plt.savefig("scatterplot_sample_passqc.png")
 
-sk.set_figsize((4, 5))
-fig, axs = plt.subplots(
-    nrows=3, ncols=1, sharex=True, sharey=True, constrained_layout=True
-)
-for i, name in enumerate(["passQC_count80", "passQC_count50", "passQC_count20"]):
-    axs[i].hist(np.log10(1 + sample_passqc_df[name].values), 100)
-    axs[i].set_title(name)
-plt.savefig("barplots_sample_passqc.png")
+    sk.set_figsize((4, 5))
+    fig, axs = plt.subplots(
+        nrows=3, ncols=1, sharex=True, sharey=True, constrained_layout=True
+    )
+    for i, name in enumerate(["passQC_count80", "passQC_count50", "passQC_count20"]):
+        axs[i].hist(np.log10(1 + sample_passqc_df[name].values), 100)
+        axs[i].set_title(name)
+    plt.savefig("barplots_sample_passqc.png")
 
-samples_to_check1 = sample_passqc_df.index.to_series()[
-    sample_passqc_df.passQC_count20 > 10000
-].to_list()
+    samples_to_check1 = sample_passqc_df.index.to_series()[
+        sample_passqc_df.passQC_count20 > 10000
+    ].to_list()
 
-samples_to_check2 = sample_passqc_df[
-    (sample_passqc_df.passQC_frac80 < 0.1) & (sample_passqc_df.passQC_count80 < 100)
-].index.to_list()
+    samples_to_check2 = sample_passqc_df[
+        (sample_passqc_df.passQC_frac80 < 0.1) & (sample_passqc_df.passQC_count80 < 100)
+    ].index.to_list()
 
-samples_to_check3 = sample_passqc_df[
-    sample_passqc_df.passQC_count80 == 0
-].index.to_list()
+    samples_to_check3 = sample_passqc_df[
+        sample_passqc_df.passQC_count80 == 0
+    ].index.to_list()
 
-print(f"samples that have count20 higher than 10k : {samples_to_check1}")
-print(f"samples that have frac80 lower than 0.1 & count80 less than 100 : {samples_to_check2}")
-print(f"samples that have zero count80: {samples_to_check3}")
+    print(f"samples that have count20 higher than 10k : {samples_to_check1}")
+    print(f"samples that have frac80 lower than 0.1 & count80 less than 100 : {samples_to_check2}")
+    print(f"samples that have zero count80: {samples_to_check3}")
+else:
+    ax = sn.scatterplot(
+        data=sample_passqc_df,
+        x="total_cell_count",
+        y="passQC_count",
+        hue=sample_passqc_df.index,
+        size="passQC_frac",
+        sizes=(10, 40),
+    )
+    ax.set_xscale("symlog")
+    ax.set_yscale("symlog")
+    ax.axline((1e3, 1e3), (1e4, 1e4), c="grey", linestyle="--")
+    ax.legend(loc="center left", bbox_to_anchor=(1, 0.5), ncol=2)
+    plt.savefig("scatterplot_sample_passqc.png")
 
-pooled_ad1 = pooled_ad0[
-    (pooled_ad0.obs.good_qc_cluster <= 80)
-    & ~pooled_ad0.obs.sampleID.isin(samples_to_check2)
-].copy()
+    sk.set_figsize((4, 5))
+    fig, axs = plt.subplots(
+        nrows=1, ncols=1, sharex=True, sharey=True, constrained_layout=True
+    )
+    for i, name in enumerate(["passQC_count"]):
+        axs[i].hist(np.log10(1 + sample_passqc_df[name].values), 100)
+        axs[i].set_title(name)
+    plt.savefig("barplots_sample_passqc.png")
+
+    samples_to_check1 = sample_passqc_df.index.to_series()[
+        sample_passqc_df.passQC_count > 10000
+    ].to_list()
+
+    samples_to_check2 = sample_passqc_df[
+        (sample_passqc_df.passQC_frac < 0.1) & (sample_passqc_df.passQC_count < 100)
+    ].index.to_list()
+
+    samples_to_check3 = sample_passqc_df[
+        sample_passqc_df.passQC_count == 0
+    ].index.to_list()
+
+    print(f"samples that have count higher than 10k : {samples_to_check1}")
+    print(f"samples that have frac lower than 0.1 & count less than 100 : {samples_to_check2}")
+    print(f"samples that have zero count: {samples_to_check3}")
+
+if args.qc_mode == 'original':
+    pooled_ad1 = pooled_ad0[
+        (pooled_ad0.obs.good_qc_cluster <= 80)
+        & ~pooled_ad0.obs.sampleID.isin(samples_to_check2)
+    ].copy()
+elif args.qc_mode == 'combined':
+    pooled_ad1 = pooled_ad0[
+        (pooled_ad0.obs.consensus_passed_qc <= 80)
+        & ~pooled_ad0.obs.sampleID.isin(samples_to_check2)
+    ].copy()
+else:
+    pooled_ad1 = pooled_ad0[
+        (pooled_ad0.obs.consensus_passed_qc == True)
+        & ~pooled_ad0.obs.sampleID.isin(samples_to_check2)
+    ].copy()
 
 del pooled_ad0
 gc.collect()
