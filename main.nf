@@ -168,19 +168,18 @@ process integrate {
 
 // Function to detect CSV format and create standardized channels
 def createInputChannels(samplefile) {
+    println "Using ${params.ss_out} output"
     // Read first line to detect format
     def firstLine = file(samplefile).readLines()[0]
-    def hasHeaders = firstLine.toLowerCase().contains('sampleid') || 
-                    firstLine.toLowerCase().contains('path_to_starsolo') ||
-                    firstLine.toLowerCase().contains('path_to_cellranger')
-    
+    def hasHeaders = firstLine.contains('sampleID')     
     if (hasHeaders) {
         // New format: CSV with full column headers
+        println "Detected the CSV format with headers"
         return Channel.fromPath(samplefile)
             .splitCsv(header: true)
             .multiMap { row ->
                 samp: row.sampleID
-                cr_gene: row.path_to_cellranger ? 
+                cr_gene: firstLine.contains('path_to_cellranger') ? 
                     "${row.path_to_cellranger}/filtered_feature_bc_matrix.h5" : 
                     "${row.path_to_starsolo}/output/${params.ss_out}/filtered/"
                 cr_velo: row.path_to_starsolo ? 
@@ -193,6 +192,7 @@ def createInputChannels(samplefile) {
             }
     } else {
         // Legacy format: CSV with just sampleIDs + prefixes
+        println "Detected the legacy format (CSV with sample IDs + prefixes)"
         return Channel.fromPath(samplefile)
             .splitCsv(header: false)
             .flatten()
