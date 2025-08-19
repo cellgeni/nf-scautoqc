@@ -27,16 +27,19 @@ import sctk as sk
 import h5py
 
 
-def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
+def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5, gather_mode):
     barcodes_file = os.path.join(cr_gene_filtered_mtx, "barcodes.tsv.gz")
     features_file = os.path.join(cr_gene_filtered_mtx, "features.tsv.gz")
     matrix_file = os.path.join(cr_gene_filtered_mtx, "matrix.mtx.gz")
 
     if os.path.exists(barcodes_file) and os.path.exists(features_file) and os.path.exists(matrix_file):
+        if gather_mode == 'cellbender':
+            cr_gene_filtered_mtx = os.path.realpath(cr_gene_filtered_mtx)
+            cr_gene_filtered_mtx = os.path.dirname(cr_gene_filtered_mtx) + "/raw"
         cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
     else:
         cr_gene_filtered_ad = sc.read_10x_h5(cr_gene_filtered_mtx)
-    logging.info("cr_gene_filtered_mtx done")
+    logging.info(f"cr_gene_filtered_mtx done (gather_mode: {gather_mode})")
 
     if cr_velo_filtered_mtx is not None:
         # If Velocyto output exists, process it and merge into h5ad
@@ -48,10 +51,16 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5):
         cb_gene_filtered_ad = sk.read_cellbender(cb_filtered_h5)
         logging.info("cb_filtered_h5 done")
 
-        common_cells = list(
-            set(cr_gene_filtered_ad.obs_names.tolist())
-            & set(cb_gene_filtered_ad.obs_names.tolist())
-        )
+        if args.gather_mode == 'starsolo':
+            common_cells = list(
+                set(cr_gene_filtered_ad.obs_names.tolist())
+                & set(cb_gene_filtered_ad.obs_names.tolist())
+            )
+        elif args.gather_mode == 'cellbender':
+            common_cells = list(
+                set(cb_gene_filtered_ad.obs_names.tolist())
+            )
+
         k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
         k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
 
@@ -103,12 +112,13 @@ def main(args):
     cr_gene_filtered_mtx = args.cr_gene
     cr_velo_filtered_mtx = args.cr_velo
     cb_filtered_h5 = args.cb_h5
+    gather_mode = args.gather_mode
     output_h5ad = "gene_velo_cellbender.filtered.h5ad"
 
     if not os.path.exists(cr_gene_filtered_mtx):
         raise FileNotFoundError(cr_gene_filtered_mtx)
 
-    ad = gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5)
+    ad = gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5, gather_mode)
     if args.cell_or_nuclei is not None:
         ad.uns['cell_or_nuclei'] = args.cell_or_nuclei
     else:
@@ -128,7 +138,7 @@ if __name__ == '__main__':
     my_parser.add_argument("--cr_velo", default=None, const=None, nargs='?', help="path to velocyto filtered folder")
     my_parser.add_argument("--cb_h5", default=None, const=None, nargs='?', help="path to cellbender h5")
     my_parser.add_argument("--cell_or_nuclei", default=None, const=None, nargs='?', help="path to cellbender h5")
-
+    my_parser.add_argument("--gather_mode", default=None, const=None, nargs='?', help="gathering mode: original (starsolo-focused), cellbender (cellbender-focused)")
     args = my_parser.parse_args()
     try:
         logLevel = logging.INFO
