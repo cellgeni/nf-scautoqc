@@ -60,7 +60,7 @@ process find_doublets {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy'
 
   input:
-  tuple val(samp), path(qc_out), path(scr_bool)
+  tuple val(samp), path(qc_out), path(scr_bool), path(qc_thres)
 
   output:
   tuple val(samp), path("*_scrublet.csv")
