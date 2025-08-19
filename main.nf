@@ -133,7 +133,6 @@ process add_metadata_basic {
   input:
   path(pool_out)
   path(scr_out)
-  val(meta_path)
 
   output:
   path("scautoqc_pooled_doubletflagged_metaadded_basic.h5ad"), emit: obj
@@ -141,7 +140,7 @@ process add_metadata_basic {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${meta_path}
+  python ${baseDir}/bin/add_scrublet_meta_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
   """
 }
 
@@ -225,7 +224,7 @@ workflow all {
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, params.metadata)
+  add_metadata(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
   integrate(add_metadata.out.obj, params.batch_key)
 }
 
@@ -249,7 +248,7 @@ workflow after_qc {
        .flatten()
        .set {scrublets}
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
+  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] })
   integrate(add_metadata.out.obj, params.batch_key)
 }
 
@@ -276,5 +275,5 @@ workflow subset {
   subset_object(samples)
   find_doublets(subset_object.out.samp_obj)
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata_basic(pool_all.out, find_doublets.out.collect(){ it[1] }, params.metadata)
+  add_metadata_basic(pool_all.out, find_doublets.out.collect(){ it[1] })
 }
