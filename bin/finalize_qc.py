@@ -170,6 +170,39 @@ print(f"samples that have count20 higher than 10k : {samples_to_check1}")
 print(f"samples that have frac80 lower than 0.1 & count80 less than 100 : {samples_to_check2}")
 print(f"samples that have zero count80: {samples_to_check3}")
 
+scr_dfs = []
+scr_csvs = args.scr.split(',')
+for file in scr_csvs:
+    scr_df = pd.read_csv(file, index_col=0)
+    scr_df.index = (scr_df.index.to_series().astype(str) + f"-{scr_df.index.name}").values
+    scr_dfs.append(scr_df)
+
+scrublet_results_df = pd.concat(scr_dfs)
+
+obs_df = pooled_ad0.obs.merge(
+    scrublet_results_df, how="left", left_index=True, right_index=True
+)
+
+obs_df['scrublet_done'] = obs_df['scrublet_done'].astype('category')
+
+if not (obs_df.index == pooled_ad0.obs_names).all():
+    print('scrublet index and object index are not identical, dying...')
+    exit()
+
+pooled_ad0.obs = obs_df
+
+pooled_ad0.obs["doublet"] = (pooled_ad0.obs.scrublet_score > 0.3) | (
+    pooled_ad0.obs.bh_pval < 0.65
+)
+pooled_ad0.obs["stringent_doublet"] = (pooled_ad0.obs.scrublet_score > 0.3) | (
+    pooled_ad0.obs.bh_pval < 0.05
+)
+
+pooled_ad0.write(
+    "scautoqc_pooled.h5ad",
+    compression="gzip",
+)
+
 if args.qc_mode == 'original':
     pooled_ad1 = pooled_ad0[
         (pooled_ad0.obs.good_qc_cluster <= 80)
@@ -189,35 +222,7 @@ else:
 del pooled_ad0
 gc.collect()
 
-scr_dfs = []
-scr_csvs = args.scr.split(',')
-for file in scr_csvs:
-    scr_df = pd.read_csv(file, index_col=0)
-    scr_df.index = (scr_df.index.to_series().astype(str) + f"-{scr_df.index.name}").values
-    scr_dfs.append(scr_df)
-
-scrublet_results_df = pd.concat(scr_dfs)
-
-obs_df = pooled_ad1.obs.merge(
-    scrublet_results_df, how="left", left_index=True, right_index=True
-)
-
-obs_df['scrublet_done'] = obs_df['scrublet_done'].astype('category')
-
-if not (obs_df.index == pooled_ad1.obs_names).all():
-    print('scrublet index and object index are not identical, dying...')
-    exit()
-
-pooled_ad1.obs = obs_df
-
-pooled_ad1.obs["doublet"] = (pooled_ad1.obs.scrublet_score > 0.3) | (
-    pooled_ad1.obs.bh_pval < 0.65
-)
-pooled_ad1.obs["stringent_doublet"] = (pooled_ad1.obs.scrublet_score > 0.3) | (
-    pooled_ad1.obs.bh_pval < 0.05
-)
-
 pooled_ad1.write(
-    "scautoqc_pooled_doubletflagged_metaadded.h5ad",
+    "scautoqc_pooled_filtered.h5ad",
     compression="gzip",
 )

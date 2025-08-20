@@ -77,7 +77,6 @@ process find_doublets {
 
 process pool_all {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
   memory = { 
@@ -91,7 +90,7 @@ process pool_all {
   path(ranges_out)
 
   output:
-  path("scautoqc_pooled.h5ad"), emit: obj
+  path("scautoqc_pooled0.h5ad"), emit: obj
   path("qc_thresholds.csv")
 
   script:
@@ -113,7 +112,8 @@ process finalize_qc {
   path(scr_out)
 
   output:
-  path("scautoqc_pooled_doubletflagged_metaadded.h5ad"), emit: obj
+  path("scautoqc_pooled_filtered.h5ad"), emit: obj
+  path("scautoqc_pooled.h5ad")
   path("*.png")
   path("sample_passqc_df.csv")
 

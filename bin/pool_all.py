@@ -103,6 +103,6 @@ for suffix in suffixes:
         del pooled_ad.var[f"n_cells{suffix}-{sid}"]
 
 pooled_ad.write(
-    "scautoqc_pooled.h5ad",
+    "scautoqc_pooled0.h5ad",
     compression="gzip",
 )
