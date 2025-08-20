@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-"""Add metadata to pooled object
+"""Add metadata and scrublet scores to pooled single-cell object
 
-Usage: add_scrublet_meta.py --obj pooled_obj.h5ad --scr /path/to/scrublet_csv1,/path/to/scrublet_csv2... --subset true
+Usage: finalize_qc_basic.py --obj pooled_obj.h5ad --scr /path/to/scrublet_csv1,/path/to/scrublet_csv2... [--meta sample_metadata.csv]
 
 Options:
-  --obj        path of the pooled h5ad
-  --scr        path of scrublet outputs
-  --meta       csv of metadata of the samples
-  --subset     whether to subset the object or not
+    --obj        Path of the pooled h5ad file.
+    --scr        Comma-separated paths of Scrublet output CSVs.
+    --meta       CSV file with sample metadata (optional).
 """
 
 import scanpy as sc

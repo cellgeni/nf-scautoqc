@@ -1,13 +1,13 @@
 #!/usr/bin/env python
-"""Add metadata to pooled object
+"""Finalize QC and annotate pooled single-cell object
 
-Usage: add_scrublet_meta.py --obj pooled_obj.h5ad --scr /path/to/scrublet_csv1,/path/to/scrublet_csv2...
+Usage: finalize_qc.py --obj pooled_obj.h5ad --scr /path/to/scrublet_csv1,/path/to/scrublet_csv2... [--meta sample_metadata.csv] --qc_mode MODE
 
 Options:
-  --obj        path of the pooled h5ad
-  --scr        path of scrublet outputs
-  --meta       csv of metadata of the samples
-  --qc_mode    QC mode
+    --obj        Path of the pooled h5ad file.
+    --scr        Comma-separated paths of Scrublet output CSVs.
+    --meta       CSV file with sample metadata (optional).
+    --qc_mode    QC mode (original, combined, or other).
 """
 
 import scanpy as sc

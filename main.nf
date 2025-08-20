@@ -100,7 +100,7 @@ process pool_all {
   """
 }
 
-process add_metadata {
+process finalize_qc {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
@@ -120,11 +120,11 @@ process add_metadata {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
+  python ${baseDir}/bin/finalize_qc.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
   """
 }
 
-process add_metadata_basic {
+process finalize_qc_basic {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
@@ -140,7 +140,7 @@ process add_metadata_basic {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
+  python ${baseDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
   """
 }
 
@@ -224,8 +224,8 @@ workflow all {
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
-  integrate(add_metadata.out.obj, params.batch_key)
+  finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
+  integrate(finalize_qc.out.obj, params.batch_key)
 }
 
 workflow only_qc {
@@ -248,8 +248,8 @@ workflow after_qc {
        .flatten()
        .set {scrublets}
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata(pool_all.out, find_doublets.out.collect(){ it[1] })
-  integrate(add_metadata.out.obj, params.batch_key)
+  finalize_qc(pool_all.out, find_doublets.out.collect(){ it[1] })
+  integrate(finalize_qc.out.obj, params.batch_key)
 }
 
 workflow until_integrate {
@@ -259,7 +259,7 @@ workflow until_integrate {
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
+  finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
 }
 
 workflow only_integrate {
@@ -275,5 +275,5 @@ workflow subset {
   subset_object(samples)
   find_doublets(subset_object.out.samp_obj)
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  add_metadata_basic(pool_all.out, find_doublets.out.collect(){ it[1] })
+  finalize_qc_basic(pool_all.out, find_doublets.out.collect(){ it[1] })
 }
