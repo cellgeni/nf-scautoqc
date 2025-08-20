@@ -105,7 +105,7 @@ process finalize_qc {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
-  memory = { 3.6.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
+  memory = { 5.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
 
   input:
   path(pool_out)
@@ -128,7 +128,7 @@ process finalize_qc_basic {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
-  memory = { 3.6.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
+  memory = { 5.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
   
   input:
   path(pool_out)
