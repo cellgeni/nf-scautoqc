@@ -1,0 +1,6 @@
+sampleID,path_to_starsolo,path_to_cellbender,cell_or_nuclei
+sample1,/path/to/sample1/starsolo/output,/path/to/sample1/cellbender/output,cell
+sample2,/path/to/sample2/starsolo/output,/path/to/sample2/cellbender/output,cell
+sample3,/path/to/sample3/starsolo/output,/path/to/sample3/cellbender/output,nuclei
+sample4,/path/to/sample4/starsolo/output,/path/to/sample4/cellbender/output,cell
+sample5,/path/to/sample5/starsolo/output,/path/to/sample5/cellbender/output,nuclei
