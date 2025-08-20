@@ -17,7 +17,7 @@ process gather_matrices {
 
   script:
   """
-  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5}
+  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --gather_mode ${params.gather_mode}
   """
 }
 
@@ -120,7 +120,7 @@ process add_metadata {
   script:
   """
   export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/add_scrublet_meta_test.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
+  python ${baseDir}/bin/add_scrublet_meta.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
   """
 }
 
