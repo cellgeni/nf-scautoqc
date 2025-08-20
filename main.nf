@@ -92,7 +92,7 @@ process pool_all {
 
   output:
   path("scautoqc_pooled.h5ad"), emit: obj
-  path("qc_metrics.csv")
+  path("qc_thresholds.csv")
 
   script:
   """

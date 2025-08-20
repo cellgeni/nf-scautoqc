@@ -67,7 +67,7 @@ metrics = list(dict.fromkeys(wide.columns.get_level_values(0)))  # preserves fir
 col_order = pd.MultiIndex.from_product([metrics, ["low", "high"]], names=["metric", "bound"])
 wide = wide.reindex(columns=col_order)
 
-wide.to_csv("qc_metrics.csv")   # columns like ('n_counts','low'), ('n_counts','high'), ...
+wide.to_csv("qc_thresholds.csv")   # columns like ('n_counts','low'), ('n_counts','high'), ...
   
 ads.clear()
 gc.collect()
