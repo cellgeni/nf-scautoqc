@@ -47,7 +47,7 @@ process subset_object {
   val(samp)
 
   output:
-  tuple val(samp), path("subsetted.h5ad"), path("*-scr"), emit: samp_obj
+  tuple val(samp), path("*_subsetted.h5ad"), path("*-scr"), emit: samp_obj
 
   script:
   """
@@ -79,23 +79,31 @@ process pool_all {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
-  memory = { 
-        def numSamples = samp.size()  // Use the size of the input list
-        return 2.GB * numSamples * task.attempt
-    }
+  memory = {
+      def numSamples = samp.size()
+      def mem = 2.GB * numSamples * task.attempt
+      return mem
+  }
 
+  queue = {
+      def numSamples = samp.size()
+      def mem = 2.GB * numSamples * task.attempt
+      return (mem > 600.GB) ? 'hugemem' : 'normal'
+  }
+    
   input:
   val(samp)
   path(qc_out)
-  path(ranges_out)
+  path(ranges)
 
   output:
   path("scautoqc_pooled0.h5ad"), emit: obj
-  path("qc_thresholds.csv")
+  path("qc_thresholds.csv"), optional: true
 
   script:
+  def rangesArg = ranges.name != 'subset' ? "--ranges ${ranges.join(",")}" : ''
   """
-  python ${baseDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ranges ${ranges_out.join(",")}
+  python ${baseDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} ${rangesArg}
   """
 }
 
@@ -135,7 +143,7 @@ process finalize_qc_basic {
   path(scr_out)
 
   output:
-  path("scautoqc_pooled_doubletflagged_metaadded_basic.h5ad"), emit: obj
+  path("scautoqc_pooled_basic.h5ad"), emit: obj
 
   script:
   """
@@ -161,7 +169,7 @@ process integrate {
 
   script:
   """
-  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${batch_key}
+  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${batch_key} --n_top_genes ${params.n_top_genes}
   """
 }
 
@@ -247,8 +255,16 @@ workflow after_qc {
   Channel.fromPath("${params.scrublet_path}/*.csv")
        .flatten()
        .set {scrublets}
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  finalize_qc(pool_all.out, find_doublets.out.collect(){ it[1] })
+  pool_all(samples.collect(), objects.collect(), scrublets.collect() { it[3] })
+  finalize_qc(pool_all.out, scrublets.collect())
+  integrate(finalize_qc.out.obj, params.batch_key)
+}
+
+workflow finalize_and_integrate {
+  Channel.fromPath("${params.scrublet_path}/*.csv")
+       .flatten()
+       .set {scrublets}
+  finalize_qc(params.pooled_obj, scrublets.collect())
   integrate(finalize_qc.out.obj, params.batch_key)
 }
 
@@ -267,6 +283,8 @@ workflow only_integrate {
   integrate(obj_scvi, params.batch_key)
 }
 
+params.rng = "$baseDir/bin/subset.py"
+
 workflow subset {
   Channel.fromPath("${params.SAMPLEFILE}")
        .splitCsv (header: false) 
@@ -274,6 +292,19 @@ workflow subset {
        .set {samples}
   subset_object(samples)
   find_doublets(subset_object.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  finalize_qc_basic(pool_all.out, find_doublets.out.collect(){ it[1] })
+  opt_file = file(params.rng)
+  pool_all(subset_object.out.samp_obj.collect(){ it[0] }, subset_object.out.samp_obj.collect() { it[1] }, opt_file)
+  finalize_qc_basic(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
+  finalize_qc_basic(params.pooled_obj, find_doublets.out.collect(){ it[1] })
+
+}
+
+workflow subset2 {
+  Channel.fromPath("${params.SAMPLEFILE}")
+       .splitCsv (header: false) 
+       .flatten()
+       .set {samples}
+  subset_object(samples)
+  find_doublets(subset_object.out.samp_obj)
+  finalize_qc_basic(params.pooled_obj, find_doublets.out.collect(){ it[1] })
 }
