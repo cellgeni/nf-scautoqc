@@ -135,7 +135,7 @@ process finalize_qc_basic {
   path(scr_out)
 
   output:
-  path("scautoqc_pooled_doubletflagged_metaadded_basic.h5ad"), emit: obj
+  path("scautoqc_pooled_basic.h5ad"), emit: obj
 
   script:
   """

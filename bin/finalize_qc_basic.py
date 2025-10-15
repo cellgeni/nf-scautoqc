@@ -112,6 +112,6 @@ pooled_ad0.obs["stringent_doublet"] = (pooled_ad0.obs.scrublet_score > 0.3) | (
 )
 
 pooled_ad0.write(
-    "scautoqc_pooled_doubletflagged_metaadded_basic.h5ad",
+    "scautoqc_pooled_basic.h5ad",
     compression="gzip",
 )
