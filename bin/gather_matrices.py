@@ -33,13 +33,19 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5, 
     matrix_file = os.path.join(cr_gene_filtered_mtx, "matrix.mtx.gz")
 
     if os.path.exists(barcodes_file) and os.path.exists(features_file) and os.path.exists(matrix_file):
+        input_mode = 'starsolo'
         if gather_mode == 'cellbender':
             cr_gene_filtered_mtx = os.path.realpath(cr_gene_filtered_mtx)
             cr_gene_filtered_mtx = os.path.dirname(cr_gene_filtered_mtx) + "/raw"
         cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
-    else:
+    else: # if cellranger
+        input_mode = 'cellranger'
+        if gather_mode == 'cellbender':
+            cr_gene_filtered_mtx = os.path.realpath(cr_gene_filtered_mtx)
+            cr_gene_filtered_mtx = os.path.dirname(cr_gene_filtered_mtx) + "/raw_feature_bc_matrix.h5"
         cr_gene_filtered_ad = sc.read_10x_h5(cr_gene_filtered_mtx)
-    logging.info(f"cr_gene_filtered_mtx done (gather_mode: {gather_mode})")
+        cr_gene_filtered_ad.obs_names = cr_gene_filtered_ad.obs_names.str.replace("-1$", "", regex=True)
+    logging.info(f"cr_gene_filtered_mtx done (input: {input_mode}, gather_mode: {gather_mode})")
 
     if cr_velo_filtered_mtx is not None:
         # If Velocyto output exists, process it and merge into h5ad
@@ -64,20 +70,32 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5, 
         k_cr = cr_gene_filtered_ad.obs_names.isin(common_cells)
         k_cb = cb_gene_filtered_ad.obs_names.isin(common_cells)
 
-        ad = anndata.AnnData(
-            X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
-            obs=cb_gene_filtered_ad.obs[k_cb].copy(),
-            var=cb_gene_filtered_ad.var.copy(),
-            layers={
-                "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
-                "spliced": cr_velo_filtered_ad.X[np.where(k_cr)[0]],
-                "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
-                "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
-            }
-        )
-        for layer in ("spliced", "unspliced", "ambiguous"):
-            ad.layers[layer].eliminate_zeros()
-        return ad
+        if cr_velo_filtered_mtx is not None:
+            ad = anndata.AnnData(
+                X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
+                obs=cb_gene_filtered_ad.obs[k_cb].copy(),
+                var=cb_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
+                    "spliced": cr_velo_filtered_ad.X[np.where(k_cr)[0]],
+                    "unspliced": cr_velo_filtered_ad.layers["unspliced"][np.where(k_cr)[0]],
+                    "ambiguous": cr_velo_filtered_ad.layers["ambiguous"][np.where(k_cr)[0]],
+                }
+            )
+            for layer in ("spliced", "unspliced", "ambiguous"):
+                ad.layers[layer].eliminate_zeros()
+            return ad
+        else:
+            ad = anndata.AnnData(
+                X=cb_gene_filtered_ad.X[np.where(k_cb)[0], :],
+                obs=cb_gene_filtered_ad.obs[k_cb].copy(),
+                var=cb_gene_filtered_ad.var.copy(),
+                layers={
+                    "raw": cr_gene_filtered_ad.X[np.where(k_cr)[0], :],
+                }
+            )
+            return ad
+        
     else:  # If CellBender output is not provided
         if cr_velo_filtered_mtx is not None:
             ad = anndata.AnnData(
