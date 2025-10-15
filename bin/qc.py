@@ -134,14 +134,14 @@ def run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold):
                 metrics = {
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
-                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (50, 97.5, "log", "both", 0.1),
                 }
             elif ad.uns['cell_or_nuclei'] == 'nuclei':
                 metrics = {
                     "n_counts": (300, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
-                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (0.01, 100, "log", "max_only", 0.1),
                 }
         else:
@@ -223,14 +223,14 @@ def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
                 metrics = {
                     "n_counts": (1000, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
-                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (50, 97.5, "log", "both", 0.1),
                 }
             elif ad.uns['cell_or_nuclei'] == 'nuclei':
                 metrics = {
                     "n_counts": (300, None, "log", "min_only", 0.1),
                     "n_genes": (100, None, "log", "min_only", 0.1),
-                    "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                    "percent_mito": (0.1, max_mito, "log", "max_only", 0.1),
                     "percent_spliced": (0.01, 100, "log", "max_only", 0.1),
                 }
         else:
