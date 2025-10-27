@@ -69,9 +69,17 @@ process find_doublets {
   scr_bool.name.endsWith('yes-scr')
 
   script:
+  def filter_column = ""
+  if (params.qc_mode == "multires") {
+    filter_column = "cluster_passed_qc"
+  } else {
+    filter_column = "good_qc_cluster_mito80"  
+  }
+  
   """
-  python ${baseDir}/bin/flag_doublet.py --filter good_qc_cluster_mito80 --samp ${samp} --input ${qc_out}
+  python ${baseDir}/bin/flag_doublet.py --filter ${filter_column} --samp ${samp} --input ${qc_out}
   """
+
 }
 
 
