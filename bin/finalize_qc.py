@@ -210,12 +210,12 @@ if args.qc_mode == 'original':
     ].copy()
 elif args.qc_mode == 'combined':
     pooled_ad1 = pooled_ad0[
-        (pooled_ad0.obs.consensus_passed_qc <= 80)
+        (pooled_ad0.obs.consensus_pass_auto_filter <= 80)
         & ~pooled_ad0.obs.sampleID.isin(samples_to_check2)
     ].copy()
-else:
+else:     # qc_mode = 'multires'
     pooled_ad1 = pooled_ad0[
-        (pooled_ad0.obs.consensus_passed_qc == True)
+        (pooled_ad0.obs.keep_multires)
         & ~pooled_ad0.obs.sampleID.isin(samples_to_check2)
     ].copy()
 
