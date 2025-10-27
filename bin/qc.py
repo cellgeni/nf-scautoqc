@@ -89,6 +89,7 @@ def calculate_qc(ad, run_scrublet=True):
             / (ad.obs["n_counts_spliced"] + ad.obs["n_counts_unspliced"])
             * 100
         )
+        ad.obs["percent_spliced"] = ad.obs["percent_spliced"].fillna(0) # when both spliced/unspliced are 0
     if run_scrublet:
         sk.run_scrublet(ad)
 
