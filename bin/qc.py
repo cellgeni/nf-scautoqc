@@ -214,6 +214,25 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold):
             consensus_threshold = this_threshold
     print("Best consensus overlap found for threshold "+str(consensus_threshold))
     ad.obs["consensus_passed_qc"] = ad.obs["consensus_fraction"] >= consensus_threshold
+    ad.uns['consensus_threshold'] = consensus_threshold
+    # --- Degenerate guard (multires) ---
+    eps = 1e-9
+    frac = ad.obs["consensus_fraction"]
+
+    # If consensus carries no info (all ~0), force all False.
+    if float(frac.max()) <= eps:
+        ad.obs["consensus_passed_qc"] = False
+        ad.uns["consensus_threshold_degenerate"] = True
+    else:
+        ad.uns["consensus_threshold_degenerate"] = False
+
+    # Optional stricter rescue: require a high raw fraction on top of kp9's boolean.
+    CONS_FLOOR = 0.90   # adjust (0.85–0.95) as you like
+    ad.obs["keep_multires"] = (
+        ad.obs["cluster_passed_qc"] |
+        (ad.obs["consensus_passed_qc"] & (frac >= CONS_FLOOR))
+    )
+
 
 def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
     """Combined original + multi-resolution QC across mitochondrial thresholds."""
@@ -263,6 +282,7 @@ def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
     for max_mito in reversed(MITO_THRESHOLDS):
         ad.obs.loc[ad.obs[f"good_qc_cluster_mito{max_mito}"], "good_qc_cluster"] = max_mito
 
+    ad.uns["consensus_threshold"] = {}
     for max_mito in MITO_THRESHOLDS:
         # Figure out consensus threshold that is the closest match to the single cell level calls
         best_jaccard = 0.0
@@ -278,11 +298,37 @@ def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
                 consensus_threshold = this_threshold
         print("Best consensus overlap found for threshold "+str(consensus_threshold))
         ad.obs[f"consensus_passed_qc_mito{max_mito}"] = (ad.obs[f"consensus_fraction_mito{max_mito}"] >= consensus_threshold)
+        ad.uns["consensus_threshold"][max_mito] = consensus_threshold
 
     ad.obs["consensus_pass_auto_filter"] = 100  # sentinel
     for max_mito in reversed(MITO_THRESHOLDS):  # start with easy (80) → hard (20)
         ad.obs.loc[ad.obs[f"consensus_passed_qc_mito{max_mito}"], "consensus_pass_auto_filter"] = max_mito
 
+    # --- Degenerate guard + controlled collapse (combined) ---
+    eps = 1e-9
+    CONS_FLOOR = 0.90   # optional: demand high cross-resolution agreement
+
+    for max_mito in MITO_THRESHOLDS:
+        frac_key = f"consensus_fraction_mito{max_mito}"
+        pass_key = f"consensus_passed_qc_mito{max_mito}"
+
+        # Degenerate: all ~0 -> force all False for this window
+        if float(ad.obs[frac_key].max()) <= eps:
+            ad.obs[pass_key] = False
+            ad.uns.setdefault("consensus_threshold_degenerate", {})[max_mito] = "degenerate_all_zero"
+
+        # Optional stricter rescue: require high raw fraction too
+        if CONS_FLOOR is not None:
+            ad.obs[pass_key] &= (ad.obs[frac_key] >= CONS_FLOOR)
+
+    # Optional interpretability: if pass at stricter mito, pass at looser too
+    ad.obs["consensus_passed_qc_mito50"] |= ad.obs["consensus_passed_qc_mito20"]
+    ad.obs["consensus_passed_qc_mito80"] |= ad.obs["consensus_passed_qc_mito50"]
+
+    # Rebuild the collapsed numeric summary (loose->strict; last write wins)
+    ad.obs["consensus_pass_auto_filter"] = 100
+    for max_mito in reversed(MITO_THRESHOLDS):
+        ad.obs.loc[ad.obs[f"consensus_passed_qc_mito{max_mito}"], "consensus_pass_auto_filter"] = max_mito
 
 def generate_qc_plots(ad, qc_metrics, qc_mode, metric_pairs, ctp_models, ctp_name):
     """Generate and return QC figures for later saving."""
@@ -573,6 +619,15 @@ def main(args):
     ad.uns['scautoqc_ranges'].to_csv(f"{sid}_metrics.csv")
 
     ad.uns['qc_mode'] = qc_mode
+
+    if qc_mode != 'original':
+        ct = ad.uns.get("consensus_threshold")
+        ctd = ad.uns.get("consensus_threshold_degenerate")
+        if isinstance(ct, dict):
+            # HDF5 requires string keys; also ensure plain Python scalars
+            ad.uns["consensus_threshold"] = {str(k): float(v) for k, v in ct.items()}
+        if isinstance(ctd, dict):    
+            ad.uns["consensus_threshold_degenerate"] = {str(k): str(v) for k, v in ctd.items()}
 
     logging.info(f"Saving AnnData object to {sid}_postqc.h5ad")
     ad.write(f"{sid}_postqc.h5ad", compression="gzip")
