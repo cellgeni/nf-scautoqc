@@ -195,7 +195,7 @@ def createInputChannels(samplefile) {
                     "${row.path_to_cellbender}/${params.cellbender_input}" : []
                 ss_gene: row.path_to_starsolo ? 
                     "${row.path_to_starsolo}/output/${params.ss_out}/filtered/" : []
-                cell_or_nuclei: row.cell_or_nuclei ?: 'cells'
+                cell_or_nuclei: row.cell_or_nuclei ?: 'cell'
             }
     } else {
         // Legacy format: CSV with just sampleIDs + prefixes
@@ -219,7 +219,7 @@ def createInputChannels(samplefile) {
                     "${params.cb_prefix}/${it}/${params.cellbender_input}"
                 ss_gene: "${params.ss_prefix}" == "" ? [] : 
                     "${resolvedPath}/output/${params.ss_out}/filtered/"
-                cell_or_nuclei: 'cells' // default value for legacy format
+                cell_or_nuclei: 'cell' // default value for legacy format
             }
     }
 }
