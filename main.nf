@@ -192,7 +192,7 @@ def createInputChannels(samplefile) {
                 cr_velo: row.path_to_starsolo ? 
                     "${row.path_to_starsolo}/output/Velocyto/raw/" : []
                 cb_h5: row.path_to_cellbender ? 
-                    "${row.path_to_cellbender}/cellbender_out_filtered.h5" : []
+                    "${row.path_to_cellbender}/${params.cellbender_input}" : []
                 ss_gene: row.path_to_starsolo ? 
                     "${row.path_to_starsolo}/output/${params.ss_out}/filtered/" : []
                 cell_or_nuclei: row.cell_or_nuclei ?: 'cells'
@@ -216,7 +216,7 @@ def createInputChannels(samplefile) {
                 cr_velo: "${params.ss_prefix}" == "" ? [] : 
                     "${resolvedPath}/output/Velocyto/raw/"
                 cb_h5: "${params.cb_prefix}" == "" ? [] : 
-                    "${params.cb_prefix}/${it}/cellbender_out_filtered.h5"
+                    "${params.cb_prefix}/${it}/${params.cellbender_input}"
                 ss_gene: "${params.ss_prefix}" == "" ? [] : 
                     "${resolvedPath}/output/${params.ss_out}/filtered/"
                 cell_or_nuclei: 'cells' // default value for legacy format
