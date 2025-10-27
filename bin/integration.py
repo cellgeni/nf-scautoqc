@@ -8,71 +8,6 @@ Options:
   --batch      batch key
   --n_top_genes number of top genes to use
 """
-def run_mde(
-    data,
-    n_neighbors=15,
-    random_state=0,
-    **kwargs,
-):
-    """
-    Util to run :func:`pymde.preserve_neighbors` for visualization of scvi-tools embeddings.
-
-    Parameters
-    ----------
-    data
-        The data of shape (n_obs, k), where k is typically defined by one of the models
-        in scvi-tools that produces an embedding (e.g., :class:`~scvi.model.SCVI`.)
-    n_neighbors
-        Number of nearest neighbors, if set to None, a sensible number will be chosen according
-        to the number of observations in `data`.
-    random_state
-        Random seed passed to mde for reproducibility
-    kwargs
-        Keyword args to :func:`pymde.preserve_neighbors`
-    Returns
-    -------
-    The pymde embedding, defaults to two dimensions.
-
-    Notes
-    -----
-    This function is a modification of scvi.model.utils.mde().
-
-    If you use this function in your research please cite:
-
-    Agrawal, Akshay, Alnur Ali, and Stephen Boyd. "Minimum-distortion embedding." arXiv preprint arXiv:2103.02559 (2021).
-    """
-    try:
-        import pymde
-        import torch
-    except ImportError:
-        raise ImportError("Please install pymde package via `pip install pymde`")
-
-    if isinstance(data, pd.DataFrame):
-        data = data.values
-
-    device = "cuda"
-
-    _kwargs = dict(
-        embedding_dim=2,
-        constraint=pymde.Standardized(),
-        repulsive_fraction=0.5,
-        verbose=False,
-        device=device,
-        n_neighbors=n_neighbors,
-    )
-    _kwargs.update(kwargs)
-
-    pymde.seed(random_state)
-    mde = pymde.preserve_neighbors(data, **_kwargs)
-
-    return mde
-
-def mde_embed(mde):
-    emb = mde.embed(verbose=False)
-
-    emb = emb.cpu().numpy()
-
-    return emb
     
 import scanpy as sc
 import pandas as pd
@@ -144,10 +79,6 @@ joblib.dump(
     pooled_ad1.obsm["X_scvi"],
     "Xscvi_embed.pkl"
 )
-
-mde_obj = run_mde(pooled_ad1.obsm["X_scvi"])
-
-pooled_ad1.obsm["X_mde"] = mde_embed(mde_obj)
 
 sc.pp.neighbors(pooled_ad1, use_rep="X_scvi")
 
