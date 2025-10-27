@@ -6,6 +6,7 @@ Usage: sample_qc.py --obj pooled_obj.h5ad
 Options:
   --obj        path of the pooled h5ad
   --batch      batch key
+  --n_top_genes number of top genes to use
 """
 def run_mde(
     data,
@@ -81,10 +82,12 @@ import anndata
 import gc
 import argparse
 import joblib
+# import rapids_singlecell as rsc
 
 my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--obj", default=None, help="path of the pooled h5ad")
 my_parser.add_argument("--batch", default=None, help="batch key")
+my_parser.add_argument("--n_top_genes", default=7500, help="number of top genes to use")
 args = my_parser.parse_args()
 
 arches_params = dict(
@@ -108,7 +111,7 @@ gc.collect()
 sc.pp.highly_variable_genes(
     pooled_ad1,
     flavor="seurat_v3",
-    n_top_genes=7500,
+    n_top_genes=int(args.n_top_genes),
     subset=True,
 )
 
