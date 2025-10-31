@@ -648,7 +648,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run sc-auto QC on a gathered AnnData object.")
     parser.add_argument("--qc_mode", default="original", help="qc mode: original (megagut), multires, combined [default: original]")
     parser.add_argument("--metrics_csv", type=nullable_string, nargs='?', help="CSV file of metric cutoffs")
-    parser.add_argument("--celltypist_model", default=None, help="comma-separated <name>:<model.pkl> pairs or a predefined set key (e.g., 'gut')")
+    parser.add_argument("--celltypist_model", nargs='?', help="comma-separated <name>:<model.pkl> pairs or a predefined set key (e.g., 'gut')")
     parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
     parser.add_argument("--gath_obj", default=None, help="path to the AnnData object from gather_matrices step")
     parser.add_argument("--sample_id", default=None, help="sample id")
