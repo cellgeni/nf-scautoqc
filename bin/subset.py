@@ -98,7 +98,7 @@ def main(args):
     ad.var['gene_name'] = ad.var_names
     ad.var_names = ad.var['gene_ids']
     
-    ad.write("subsetted.h5ad", compression="gzip")
+    ad.write(f"{sid}_subsetted.h5ad", compression="gzip")
 
     if (ad.X.sum(0) > 0).sum() < ad.shape[1] * 0.2:
         open(f'{sid}_no-scr', 'a').close()
