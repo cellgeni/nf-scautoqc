@@ -160,7 +160,6 @@ process integrate {
 
   input:
   path(qc2_out)
-  val(batch_key)
 
   output:
   path("scautoqc_integrated.h5ad")
@@ -169,7 +168,7 @@ process integrate {
 
   script:
   """
-  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${batch_key}
+  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --from_scautoqc ${params.from_scautoqc}
   """
 }
 
