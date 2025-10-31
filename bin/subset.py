@@ -61,16 +61,23 @@ def main(args):
     sid = args.sample_id
     root_dir = Path(args.cr_prefix) / sid
 
+    full_path = None
     for dirpath, dirnames, filenames in os.walk(root_dir):
+        for dirname in dirnames:
+            if dirname.startswith("filtered_feature_bc_matrix"):
+                full_path = os.path.join(dirpath, dirname)
+                break
         for filename in filenames:
             if filename.startswith("filtered_feature_bc_matrix"):
                 full_path = os.path.join(dirpath, filename)
-                continue
+                break
+        if full_path:
+            break
     
     if full_path.endswith(".h5"):
         ad = sc.read_10x_h5(full_path)
     else:
-        ad = sc.read(full_path)
+        ad = sc.read_10x_mtx(full_path)
 
     calculate_qc(ad)
 
