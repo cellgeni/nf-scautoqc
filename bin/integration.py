@@ -23,6 +23,7 @@ my_parser = argparse.ArgumentParser()
 my_parser.add_argument("--obj", default=None, help="path of the pooled h5ad")
 my_parser.add_argument("--batch", default=None, help="batch key")
 my_parser.add_argument("--n_top_genes", default=7500, help="number of top genes to use")
+my_parser.add_argument("--from_scautoqc", default=None, help="whether the input object is from scAutoQC")
 args = my_parser.parse_args()
 
 arches_params = dict(
@@ -35,13 +36,14 @@ arches_params = dict(
 
 pooled_ad1 = sc.read(args.obj)
 
-pooled_ad1 = pooled_ad1[~pooled_ad1.obs.stringent_doublet].copy()
+if args.from_scautoqc:
+    pooled_ad1 = pooled_ad1[~pooled_ad1.obs.stringent_doublet].copy()
+    gc.collect()
 
-gc.collect()
-
-pooled_ad1.raw = pooled_ad1
-pooled_ad1 = pooled_ad1[:, ~pooled_ad1.var["cc"]].copy()
-gc.collect()
+if args.from_scautoqc:
+    pooled_ad1.raw = pooled_ad1
+    pooled_ad1 = pooled_ad1[:, ~pooled_ad1.var["cc"]].copy()
+    gc.collect()
 
 sc.pp.highly_variable_genes(
     pooled_ad1,
