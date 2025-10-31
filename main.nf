@@ -17,7 +17,7 @@ process gather_matrices {
 
   script:
   """
-  python ${baseDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --gather_mode ${params.gather_mode}
+  python ${projectDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --gather_mode ${params.gather_mode}
   """
 }
 
@@ -35,7 +35,7 @@ process run_qc {
 
   script:
   """
-  python ${baseDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out}
+  python ${projectDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out}
   """
 }
 
@@ -51,7 +51,7 @@ process subset_object {
 
   script:
   """
-  python ${baseDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
+  python ${projectDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
   """
 }
 
@@ -77,7 +77,7 @@ process find_doublets {
   }
   
   """
-  python ${baseDir}/bin/flag_doublet.py --filter ${filter_column} --samp ${samp} --input ${qc_out}
+  python ${projectDir}/bin/flag_doublet.py --filter ${filter_column} --samp ${samp} --input ${qc_out}
   """
 
 }
@@ -103,7 +103,7 @@ process pool_all {
 
   script:
   """
-  python ${baseDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ranges ${ranges_out.join(",")}
+  python ${projectDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ranges ${ranges_out.join(",")}
   """
 }
 
@@ -127,8 +127,8 @@ process finalize_qc {
 
   script:
   """
-  export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/finalize_qc.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
+  export BASE_DIR=${projectDir}
+  python ${projectDir}/bin/finalize_qc.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
   """
 }
 
@@ -147,8 +147,8 @@ process finalize_qc_basic {
 
   script:
   """
-  export BASE_DIR=${baseDir}
-  python ${baseDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
+  export BASE_DIR=${projectDir}
+  python ${projectDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
   """
 }
 
@@ -168,7 +168,7 @@ process integrate {
 
   script:
   """
-  python ${baseDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --from_scautoqc ${params.from_scautoqc}
+  python ${projectDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --from_scautoqc ${params.from_scautoqc}
   """
 }
 
