@@ -100,7 +100,7 @@ process pool_all {
       def baseMemory = 10.GB
       def perSampleMemory = 1.GB * numSamples
       def requestedMemory = [baseMemory, perSampleMemory].max()
-      return (requestedMemory * 1.2 * task.attempt) as nextflow.util.MemoryUnit
+      return (requestedMemory * 1.4 * task.attempt) as nextflow.util.MemoryUnit
   }
 
   input:
@@ -126,7 +126,13 @@ process finalize_qc {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
-  memory = { 5.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
+  memory {
+      def inputSizeGB = pool_out.size() / (1024 * 1024 * 1024)
+      def baseMemory = 8.GB
+      def memoryMultiplier = 3.5  // Conservative multiplier between observed values
+      def requestedMemory = baseMemory + (inputSizeGB * memoryMultiplier).GB
+      return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
+  }
 
   input:
   path(pool_out)
@@ -150,8 +156,14 @@ process finalize_qc_basic {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
-  memory = { 5.GB * (pool_out.size() / (1024 * 1024 * 1024)) * task.attempt }
-  
+  memory {
+      def inputSizeGB = pool_out.size() / (1024 * 1024 * 1024)
+      def baseMemory = 8.GB
+      def memoryMultiplier = 3.5  // Conservative multiplier between observed values
+      def requestedMemory = baseMemory + (inputSizeGB * memoryMultiplier).GB
+      return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
+  }
+    
   input:
   path(pool_out)
   path(scr_out)
@@ -170,8 +182,12 @@ process finalize_qc_basic {
 process integrate {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}", pattern: '*.h5ad', mode: 'copy'
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/models", pattern: '*.pkl', mode: 'copy'
+
+  memory {
+      def inputSizeGB = qc2_out.size() / (1024 * 1024 * 1024)
+      def requestedMemory = (inputSizeGB * 15).GB
+      return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
+  }
 
   input:
   path(qc2_out)
