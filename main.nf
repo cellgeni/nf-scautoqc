@@ -43,23 +43,23 @@ process run_qc {
   """
 }
 
-process subset_object {
+// process subset_object {
 
-  tag "${samp}"
+//   tag "${samp}"
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+//   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
 
-  input:
-  val(samp)
+//   input:
+//   val(samp)
 
-  output:
-  tuple val(samp), path("subsetted.h5ad"), path("*-scr"), emit: samp_obj
+//   output:
+//   tuple val(samp), path("subsetted.h5ad"), path("*-scr"), emit: samp_obj
 
-  script:
-  """
-  python ${projectDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
-  """
-}
+//   script:
+//   """
+//   python ${projectDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
+//   """
+// }
 
 process find_doublets {
 
@@ -152,32 +152,32 @@ process finalize_qc {
   """
 }
 
-process finalize_qc_basic {
+// process finalize_qc_basic {
 
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
+//   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
 
-  memory {
-      def inputSizeGB = pool_out.size() / (1024 * 1024 * 1024)
-      def baseMemory = 8.GB
-      def memoryMultiplier = 3.5  // Conservative multiplier between observed values
-      def requestedMemory = baseMemory + (inputSizeGB * memoryMultiplier).GB
-      return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
-  }
+//   memory {
+//       def inputSizeGB = pool_out.size() / (1024 * 1024 * 1024)
+//       def baseMemory = 8.GB
+//       def memoryMultiplier = 3.5  // Conservative multiplier between observed values
+//       def requestedMemory = baseMemory + (inputSizeGB * memoryMultiplier).GB
+//       return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
+//   }
     
-  input:
-  path(pool_out)
-  path(scr_out)
-  val(numSamples)
+//   input:
+//   path(pool_out)
+//   path(scr_out)
+//   val(numSamples)
 
-  output:
-  path("scautoqc_pooled_basic.h5ad"), emit: obj
+//   output:
+//   path("scautoqc_pooled_basic.h5ad"), emit: obj
 
-  script:
-  """
-  export BASE_DIR=${projectDir}
-  python ${projectDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
-  """
-}
+//   script:
+//   """
+//   export BASE_DIR=${projectDir}
+//   python ${projectDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
+//   """
+// }
 
 process integrate {
 
@@ -338,20 +338,20 @@ workflow only_integrate {
 //   finalize_qc_basic(pool_all.out, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
 // }
 
-workflow subset {
-  params.rng = "$baseDir/bin/subset.py"
+// workflow subset_new {
+//   params.rng = "$baseDir/bin/subset.py"
 
-  Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv (header: false) 
-       .flatten()
-       .set {samples}
-  subset_object(samples)
-  find_doublets(subset_object.out.samp_obj)
+//   Channel.fromPath("${params.SAMPLEFILE}")
+//        .splitCsv (header: false) 
+//        .flatten()
+//        .set {samples}
+//   subset_object(samples)
+//   find_doublets(subset_object.out.samp_obj)
 
-  opt_file = file(params.rng)
-  def samp_collected = subset_object.out.samp_obj.collect(){ it[0] }
-  def numSamples = samp_collected.map { it.size() }
+//   opt_file = file(params.rng)
+//   def samp_collected = subset_object.out.samp_obj.collect(){ it[0] }
+//   def numSamples = samp_collected.map { it.size() }
 
-  pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, opt_file, numSamples)
-  finalize_qc_basic(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
-}
+//   pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, opt_file, numSamples)
+//   finalize_qc_basic(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
+// }
