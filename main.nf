@@ -123,7 +123,7 @@ process pool_all {
 process finalize_qc {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.h5ad', mode: 'copy'
-  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_qc_plots_overall", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_6_qc_plots_overall", pattern: '*.png', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
   memory {
@@ -182,6 +182,8 @@ process finalize_qc_basic {
 process integrate {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}", pattern: '*.h5ad', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/5_6_qc_plots_overall", pattern: '*.png', mode: 'copy'
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/6_models", pattern: '*.pkl', mode: 'copy'
 
   memory {
       def inputSizeGB = qc2_out.size() / (1024 * 1024 * 1024)
