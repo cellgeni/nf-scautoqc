@@ -154,7 +154,8 @@ def run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold):
         sk._pipeline.cellwise_qc(
             ad,
             metrics,
-            cell_qc_key=f"good_qc_cell_mito{max_mito}"
+            cell_qc_key=f"good_qc_cell_mito{max_mito}",
+            cutoff=args.gmm_cutoff
         )
         sk._pipeline.clusterwise_qc(
             ad,
@@ -197,7 +198,7 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold):
     if not (('spliced' in ad.layers) and ('unspliced' in ad.layers)):
         del metrics['percent_spliced']
 
-    sk._pipeline.cellwise_qc(ad, metrics)
+    sk._pipeline.cellwise_qc(ad, metrics, cutoff=args.gmm_cutoff)
     sk._pipeline.multi_resolution_cluster_qc(ad, metrics=qc_metrics)
 
     # Figure out consensus threshold that is the closest match to the single cell level calls
@@ -262,7 +263,8 @@ def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
         sk._pipeline.cellwise_qc(
             ad,
             metrics,
-            cell_qc_key=f"good_qc_cell_mito{max_mito}"
+            cell_qc_key=f"good_qc_cell_mito{max_mito}",
+            cutoff=args.gmm_cutoff
         )
         sk._pipeline.multi_resolution_cluster_qc(
             ad,
@@ -510,7 +512,7 @@ def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, thresho
     logging.info("Calculating QC metrics")
     calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
 
-    logging.info(f"Starting QC: mode={qc_mode}")
+    logging.info(f"Starting QC: mode={qc_mode}, cutoff={args.gmm_cutoff}")
     if qc_mode == "original":
         run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold)
     elif qc_mode == "multires":
@@ -651,6 +653,7 @@ if __name__ == "__main__":
     parser.add_argument("--celltypist_model", nargs='?', help="comma-separated <name>:<model.pkl> pairs or a predefined set key (e.g., 'gut')")
     parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
     parser.add_argument("--gath_obj", default=None, help="path to the AnnData object from gather_matrices step")
+    parser.add_argument("--gmm_cutoff", default=None, help="whether to use closest or furthest point relative to GMM PDF")
     parser.add_argument("--sample_id", default=None, help="sample id")
 
     args = parser.parse_args()

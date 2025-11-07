@@ -35,7 +35,7 @@ process run_qc {
 
   script:
   """
-  python ${projectDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out}
+  python ${projectDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out} --gmm_cutoff ${params.gmm_cutoff}
   """
 }
 
