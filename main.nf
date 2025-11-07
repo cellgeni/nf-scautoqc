@@ -4,6 +4,8 @@ nextflow.enable.dsl=2
 
 process gather_matrices {
 
+  tag "${samp}"
+
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/1_gathered_objects", mode: 'copy', saveAs: {filename -> "${samp}.${filename}"}
 
   input:
@@ -23,6 +25,8 @@ process gather_matrices {
 
 process run_qc {
 
+  tag "${samp}"
+
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy'
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_plots_individual", pattern: '*.png', mode: 'copy'
 
@@ -41,6 +45,8 @@ process run_qc {
 
 process subset_object {
 
+  tag "${samp}"
+
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
 
   input:
@@ -56,6 +62,8 @@ process subset_object {
 }
 
 process find_doublets {
+
+  tag "${samp}"
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy'
 
