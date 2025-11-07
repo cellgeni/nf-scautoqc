@@ -95,19 +95,24 @@ process pool_all {
 
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/", pattern: '*.csv', mode: 'copy'
 
-  memory = { 
-        def numSamples = samp.size()  // Use the size of the input list
-        return 2.GB * numSamples * task.attempt
-    }
+  memory {
+      def numSamples = samp.size()
+      def baseMemory = 10.GB
+      def perSampleMemory = 1.GB * numSamples
+      def requestedMemory = [baseMemory, perSampleMemory].max()
+      return (requestedMemory * 1.2 * task.attempt) as nextflow.util.MemoryUnit
+  }
 
   input:
   val(samp)
   path(qc_out)
   path(ranges_out)
+  val(numSamples)
 
   output:
   path("scautoqc_pooled0.h5ad"), emit: obj
   path("qc_thresholds.csv")
+  val(numSamples), emit: numSamples
 
   script:
   """
@@ -126,6 +131,7 @@ process finalize_qc {
   input:
   path(pool_out)
   path(scr_out)
+  val(numSamples)
 
   output:
   path("scautoqc_pooled_filtered.h5ad"), emit: obj
@@ -149,6 +155,7 @@ process finalize_qc_basic {
   input:
   path(pool_out)
   path(scr_out)
+  val(numSamples)
 
   output:
   path("scautoqc_pooled_basic.h5ad"), emit: obj
@@ -238,9 +245,13 @@ workflow all {
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
-  integrate(finalize_qc.out.obj, params.batch_key)
+
+  def samp_collected = run_qc.out.samp_obj.collect(){ it[0] }
+  def numSamples = samp_collected.map { it.size() }
+
+  pool_all(samp_collected, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] }, numSamples)
+  finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
+  integrate(finalize_qc.out.obj)
 }
 
 workflow only_qc {
@@ -263,8 +274,8 @@ workflow after_qc {
        .flatten()
        .set {scrublets}
   pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  finalize_qc(pool_all.out, find_doublets.out.collect(){ it[1] })
-  integrate(finalize_qc.out.obj, params.batch_key)
+  finalize_qc(pool_all.out, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
+  integrate(finalize_qc.out.obj)
 }
 
 workflow until_integrate {
@@ -273,22 +284,56 @@ workflow until_integrate {
   gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] })
+
+  def samp_collected = run_qc.out.samp_obj.collect(){ it[0] }
+  def numSamples = samp_collected.map { it.size() }
+
+  pool_all(samp_collected, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] }, numSamples)
+  finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
 }
 
 workflow only_integrate {
-  obj_scvi = Channel.fromPath("${params.path_for_scvi}")
-  integrate(obj_scvi, params.batch_key)
+  if (params.path_for_scvi.endsWith('.csv')) {
+    println "Detected the CSV file with multiple objects to integrate"
+    obj_scvi = Channel.fromPath("${params.path_for_scvi}")
+      .splitCsv(header: false)
+      .flatten()
+      .map { row -> file(row) }
+  } else {
+    obj_scvi = Channel.fromPath("${params.path_for_scvi}")
+  }
+  integrate(obj_scvi)
 }
 
+// workflow subset {
+//   Channel.fromPath("${params.SAMPLEFILE}")
+//        .splitCsv (header: false) 
+//        .flatten()
+//        .set {samples}
+//   subset_object(samples)
+//   find_doublets(subset_object.out.samp_obj)
+
+//   def samp_collected = subset_object.out.samp_obj.collect(){ it[0] }
+//   def numSamples = samp_collected.map { it.size() }
+
+//   pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, subset_object.out.samp_obj.collect() { it[3] }, numSamples)
+//   finalize_qc_basic(pool_all.out, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
+// }
+
 workflow subset {
+  params.rng = "$baseDir/bin/subset.py"
+
   Channel.fromPath("${params.SAMPLEFILE}")
        .splitCsv (header: false) 
        .flatten()
        .set {samples}
   subset_object(samples)
   find_doublets(subset_object.out.samp_obj)
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
-  finalize_qc_basic(pool_all.out, find_doublets.out.collect(){ it[1] })
+
+  opt_file = file(params.rng)
+  def samp_collected = subset_object.out.samp_obj.collect(){ it[0] }
+  def numSamples = samp_collected.map { it.size() }
+
+  pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, opt_file, numSamples)
+  finalize_qc_basic(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
 }
