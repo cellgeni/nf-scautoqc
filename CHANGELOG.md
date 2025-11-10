@@ -1,6 +1,6 @@
 # Changelog
 
-### 25-303 (30 Oct)
+### 25-314
 This release introduces significant changes to the pipeline.  
 ⚠️ Note: h5ad outputs from this version might **not be backward‑compatible** with previous scAutoQC releases.
 
