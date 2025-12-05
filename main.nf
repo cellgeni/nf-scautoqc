@@ -19,7 +19,7 @@ process gather_matrices {
 
   script:
   """
-  python ${projectDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --gather_mode ${params.gather_mode}
+  python ${moduleDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --gather_mode ${params.gather_mode}
   """
 }
 
@@ -39,7 +39,7 @@ process run_qc {
 
   script:
   """
-  python ${projectDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out} --gmm_cutoff ${params.gmm_cutoff}
+  python ${moduleDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out} --gmm_cutoff ${params.gmm_cutoff}
   """
 }
 
@@ -57,7 +57,7 @@ process subset_object {
 
   script:
   """
-  python ${projectDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
+  python ${moduleDir}/bin/subset.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
   """
 }
 
@@ -85,7 +85,7 @@ process find_doublets {
   }
   
   """
-  python ${projectDir}/bin/flag_doublet.py --filter ${filter_column} --samp ${samp} --input ${qc_out}
+  python ${moduleDir}/bin/flag_doublet.py --filter ${filter_column} --samp ${samp} --input ${qc_out}
   """
 
 }
@@ -116,7 +116,7 @@ process pool_all {
 
   script:
   """
-  python ${projectDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ranges ${ranges_out.join(",")}
+  python ${moduleDir}/bin/pool_all.py --samples ${samp.join(",")} --objects ${qc_out.join(",")} --ranges ${ranges_out.join(",")}
   """
 }
 
@@ -147,8 +147,8 @@ process finalize_qc {
 
   script:
   """
-  export BASE_DIR=${projectDir}
-  python ${projectDir}/bin/finalize_qc.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
+  export BASE_DIR=${moduleDir}
+  python ${moduleDir}/bin/finalize_qc.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata} --qc_mode ${params.qc_mode}
   """
 }
 
@@ -174,8 +174,8 @@ process finalize_qc_basic {
 
   script:
   """
-  export BASE_DIR=${projectDir}
-  python ${projectDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
+  export BASE_DIR=${moduleDir}
+  python ${moduleDir}/bin/finalize_qc_basic.py --obj ${pool_out} --scr ${scr_out.join(",")} --meta ${params.metadata}
   """
 }
 
@@ -201,7 +201,7 @@ process integrate {
 
   script:
   """
-  python ${projectDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --from_scautoqc ${params.from_scautoqc}
+  python ${moduleDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --from_scautoqc ${params.from_scautoqc}
   """
 }
 
@@ -340,7 +340,7 @@ workflow subset {
 }
 
 workflow subset_new {
-  params.rng = "$projectDir/bin/subset.py"
+  params.rng = "$moduleDir/bin/subset.py"
   opt_file = file(params.rng)
 
   Channel.fromPath("${params.SAMPLEFILE}")
