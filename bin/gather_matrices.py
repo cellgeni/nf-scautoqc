@@ -42,8 +42,12 @@ def gather_matrices(cr_gene_filtered_mtx, cr_velo_filtered_mtx, cb_filtered_h5, 
         input_mode = 'cellranger'
         if gather_mode == 'cellbender':
             cr_gene_filtered_mtx = os.path.realpath(cr_gene_filtered_mtx)
-            cr_gene_filtered_mtx = os.path.dirname(cr_gene_filtered_mtx) + "/raw_feature_bc_matrix.h5"
-        cr_gene_filtered_ad = sc.read_10x_h5(cr_gene_filtered_mtx)
+            if os.path.exists(os.path.dirname(cr_gene_filtered_mtx) + "/raw_feature_bc_matrix.h5"):
+                cr_gene_filtered_mtx = os.path.dirname(cr_gene_filtered_mtx) + "/raw_feature_bc_matrix.h5"
+                cr_gene_filtered_ad = sc.read_10x_h5(cr_gene_filtered_mtx)
+            else:
+                cr_gene_filtered_mtx = os.path.dirname(cr_gene_filtered_mtx) + "/raw_feature_bc_matrix"
+                cr_gene_filtered_ad = sc.read_10x_mtx(cr_gene_filtered_mtx)
         cr_gene_filtered_ad.obs_names = cr_gene_filtered_ad.obs_names.str.replace("-1$", "", regex=True)
     logging.info(f"cr_gene_filtered_mtx done (input: {input_mode}, gather_mode: {gather_mode})")
 
