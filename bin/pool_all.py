@@ -35,6 +35,8 @@ ads = {}
 for obj in objects:
     ad = sc.read(obj)
     sample_id = ad.obs['sampleID'].unique()[0]
+    if len(ad.var_names[0].split('_')) > 1:
+        ad.var_names = [f"{j}" for i, j in ad.var_names.str.split('_').str[0:2]]
     ad.var_names_make_unique()
     if sample_id in samples:
         ads[sample_id] = ad
