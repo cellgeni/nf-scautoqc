@@ -8,6 +8,9 @@ nextflow run cellgeni/nf-scautoqc -r main \
   -entry all \
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
+  --qc_mode original \
+  --cellbender_input cellbender_out_filtered.h5 \
+  --celltypist gut \
   --ss_out Gene \
   --project_tag project1 \
   --batch_key sampleID \

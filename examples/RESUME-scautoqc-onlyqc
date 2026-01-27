@@ -7,6 +7,10 @@ nextflow run cellgeni/nf-scautoqc -r main \
   --SAMPLEFILE /path/to/sample/file \
   --ss_prefix /path/to/starsolo-results \
   --cb_prefix /path/to/cellbender-results \
+  --qc_mode original \
+  --cell_or_nuclei cell \
+  --cellbender_input cellbender_out_filtered.h5 \
+  --celltypist gut \
   --ss_out Gene \
   --project_tag project1 \
   --batch_key sampleID \
