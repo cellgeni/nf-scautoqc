@@ -13,13 +13,14 @@ process gather_matrices {
   path(cr_gene), stageAs: "filteredSS"
   path(cr_velo), stageAs: "filteredVelo"
   path(cb_h5)
+  val(cell_or_nuclei)
 
   output:
   tuple val(samp), path("*gene_velo_cellbender.filtered.h5ad"), emit: obj
 
   script:
   """
-  python ${projectDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --gather_mode ${params.gather_mode}
+  python ${projectDir}/bin/gather_matrices.py --cr_gene ${cr_gene} --cr_velo ${cr_velo} --cb_h5 ${cb_h5} --cell_or_nuclei ${cell_or_nuclei} --gather_mode ${params.gather_mode}
   """
 }
 
@@ -251,7 +252,7 @@ def createInputChannels(samplefile) {
                     "${params.cb_prefix}/${it}/${params.cellbender_input}"
                 ss_gene: "${params.ss_prefix}" == "" ? [] : 
                     "${resolvedPath}/output/${params.ss_out}/filtered/"
-                cell_or_nuclei: 'cell' // default value for legacy format
+                cell_or_nuclei: "${params.cell_or_nuclei}" // default value for legacy format
             }
     }
 }
@@ -260,7 +261,7 @@ def createInputChannels(samplefile) {
 workflow all {
   def samples = createInputChannels("${params.SAMPLEFILE}")
 
-  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
+  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5, samples.cell_or_nuclei)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
 
@@ -275,7 +276,7 @@ workflow all {
 workflow only_qc {
   def samples = createInputChannels("${params.SAMPLEFILE}")
 
-  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
+  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5, samples.cell_or_nuclei)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
 }
@@ -299,7 +300,7 @@ workflow after_qc {
 workflow until_integrate {
   def samples = createInputChannels("${params.SAMPLEFILE}")
 
-  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5)
+  gather_matrices(samples.samp, samples.cr_gene, samples.cr_velo, samples.cb_h5, samples.cell_or_nuclei)
   run_qc(gather_matrices.out.obj)
   find_doublets(run_qc.out.samp_obj)
 
