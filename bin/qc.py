@@ -442,7 +442,7 @@ def generate_qc_plots(ad, qc_metrics, qc_mode, metric_pairs, ctp_models, ctp_nam
         sc.pl.embedding(
             ad,
             basis="umap_qc",
-            color=["consensus_passed_qc"],
+            color=["pass_default", "qc_cluster", "consensus_passed_qc"],
             size=30,
             legend_fontsize=12,
             show=False,
