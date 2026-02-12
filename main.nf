@@ -61,6 +61,24 @@ process subset_object {
   """
 }
 
+process subset_object2 {
+
+  tag "${samp}"
+
+  publishDir "${launchDir}/scautoqc-results-${params.project_tag}/2_qc_objects", pattern: '*.h5ad', mode: 'copy', saveAs: {filename -> "${samp}_${filename}"}
+
+  input:
+  val(samp)
+
+  output:
+  tuple val(samp), path("*_subsetted.h5ad"), path("*-scr"), emit: samp_obj
+
+  script:
+  """
+  python ${projectDir}/bin/subset2.py --sample_id ${samp} --cr_prefix ${params.cr_prefix} --limits_csv ${params.limits_csv}
+  """
+}
+
 process find_doublets {
 
   tag "${samp}"
@@ -356,5 +374,25 @@ workflow subset_new {
   def numSamples = samp_collected.map { it.size() }
   
   pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, opt_file, numSamples)
+  finalize_qc_basic(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
+}
+
+workflow subset_new2 {
+  params.rng = "$projectDir/bin/subset.py"
+  opt_file = file(params.rng)
+
+  Channel.fromPath("${params.SAMPLEFILE}")
+       .splitCsv (header: false) 
+       .flatten()
+       .set {samples}
+  subset_object2(samples)
+
+  for_doubs = subset_object2.out.samp_obj.map { it + [ opt_file ] }
+  find_doublets(for_doubs)
+  
+  def samp_collected = subset_object2.out.samp_obj.collect(){ it[0] }
+  def numSamples = samp_collected.map { it.size() }
+  
+  pool_all(samp_collected, subset_object2.out.samp_obj.collect() { it[1] }, opt_file, numSamples)
   finalize_qc_basic(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
 }
