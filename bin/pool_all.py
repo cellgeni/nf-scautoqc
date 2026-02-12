@@ -50,30 +50,21 @@ pooled_ad = sc.AnnData.concatenate(
 wide_series_by_sample = {}
 
 if ranges:
+    long_frames = []
     for r in ranges:
-        df = pd.read_csv(r, skipinitialspace=True)
-
-        first_col = df.columns[0]
-        sample = first_col.split("|", 1)[1]
-
-        s = (
-            df.rename(columns={first_col: "metric"})
-            .set_index("metric")
-            .stack()
-        )
-        s.index = pd.MultiIndex.from_tuples(s.index, names=["metric", "bound"])
-        wide_series_by_sample[sample] = s
-
-    wide = pd.DataFrame(wide_series_by_sample).T
-    wide.index.name = "sample"
-
-    wide = wide.sort_index()
-
-    metrics = list(dict.fromkeys(wide.columns.get_level_values(0)))  # preserves first-seen order
-    col_order = pd.MultiIndex.from_product([metrics, ["low", "high"]], names=["metric", "bound"])
-    wide = wide.reindex(columns=col_order)
-
-    wide.to_csv("qc_thresholds.csv")   # columns like ('n_counts','low'), ('n_counts','high'), ...
+        if not r.endswith("_qc_thresholds.csv"):
+            continue
+        try:
+            long_df = pd.read_csv(r, skipinitialspace=True)
+            long_frames.append(long_df)
+        except FileNotFoundError:
+            continue
+    if long_frames:
+        qc_long = pd.concat(long_frames, ignore_index=True)
+        sort_cols = [c for c in ("sample", "sampleID") if c in qc_long.columns]
+        if sort_cols:
+            qc_long = qc_long.sort_values(by=sort_cols, kind="mergesort")
+        qc_long.to_csv("qc_thresholds.csv", index=False)
   
 ads.clear()
 gc.collect()

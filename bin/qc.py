@@ -615,10 +615,67 @@ def main(args):
 
     ad.obs['sampleID'] = sid
     
-    logging.info(f"Saving the final ranges to {sid}_metrics.csv")
+    logging.info("Preparing QC threshold summaries")
+    ranges = ad.uns.get("scautoqc_ranges")
+    if isinstance(ranges, pd.DataFrame):
+        ranges = ranges.copy()
+        for col in ("low", "high"):
+            if col in ranges.columns:
+                ranges[col] = pd.to_numeric(ranges[col], errors="coerce")
+
+        n_total = ad.n_obs
+        n_pass = []
+        per_metric_pass = {}
+        for metric, row in ranges.iterrows():
+            if metric not in ad.obs:
+                n_pass.append(np.nan)
+                continue
+            vals = pd.to_numeric(ad.obs[metric], errors="coerce")
+            mask = pd.Series(True, index=vals.index)
+            low = row.get("low")
+            high = row.get("high")
+            if pd.notna(low):
+                mask &= vals >= low
+            if pd.notna(high):
+                mask &= vals <= high
+            per_metric_pass[metric] = mask
+            n_pass.append(int(mask.sum()))
+        ranges["n_pass"] = n_pass
+        ad.uns["scautoqc_ranges"] = ranges
+
+        # Tidy/long QC summary (one row per sample per metric)
+        summary_rows = []
+        for metric, row in ranges.iterrows():
+            summary_rows.append({
+                "sample": sid,
+                "metric": metric,
+                "low": row.get("low"),
+                "high": row.get("high"),
+                "n_pass": row.get("n_pass"),
+                "n_total": n_total,
+                "pass_rate": (row.get("n_pass") / n_total) if n_total else np.nan,
+            })
+        if per_metric_pass:
+            all_mask = pd.Series(True, index=ad.obs_names)
+            for m in per_metric_pass.values():
+                all_mask &= m
+            n_pass_all = int(all_mask.sum())
+            summary_rows.append({
+                "sample": sid,
+                "metric": "all_metrics",
+                "low": np.nan,
+                "high": np.nan,
+                "n_pass": n_pass_all,
+                "n_total": n_total,
+                "pass_rate": (n_pass_all / n_total) if n_total else np.nan,
+            })
+        summary_df = pd.DataFrame(summary_rows)
+        if "n_pass" in summary_df.columns:
+            summary_df["n_pass"] = summary_df["n_pass"].astype("Int64")
+        summary_df.to_csv(f"{sid}_qc_thresholds.csv", index=False)
+
     ad.uns['scautoqc_ranges'] = ad.uns['scautoqc_ranges'].applymap(lambda x: x.item() if hasattr(x, "item") else x)
     ad.uns['scautoqc_ranges'].index.name = f'metrics|{sid}'
-    ad.uns['scautoqc_ranges'].to_csv(f"{sid}_metrics.csv")
 
     ad.uns['qc_mode'] = qc_mode
 
