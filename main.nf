@@ -74,9 +74,6 @@ process find_doublets {
   output:
   tuple val(samp), path("*_scrublet.csv")
 
-  when:
-  scr_bool.name.endsWith('yes-scr')
-
   script:
   def filter_column = ""
   if (params.qc_mode == "multires") {
