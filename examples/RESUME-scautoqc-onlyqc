@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export LSB_DEFAULT_USERGROUP=YourGroup
+
 nextflow run cellgeni/nf-scautoqc -r main \
   -entry only_qc \
   --SAMPLEFILE /path/to/sample/file \

@@ -2,6 +2,8 @@
 
 set -euo pipefail
 
+export LSB_DEFAULT_USERGROUP=YourGroup
+
 # remove the metadata line below if there is no metadata 
 
 nextflow run cellgeni/nf-scautoqc -r main \
