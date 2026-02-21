@@ -35,7 +35,7 @@ process run_qc {
   tuple val(samp), path(gath_out)
 
   output:
-  tuple val(samp), path("*_postqc.h5ad"), path("*-scr"), path("*.csv"), emit: samp_obj
+  tuple val(samp), path("*_postqc.h5ad"), path("*.csv"), emit: samp_obj
   path("*.png")
 
   script:
@@ -54,7 +54,7 @@ process subset_object {
   val(samp)
 
   output:
-  tuple val(samp), path("*_subsetted.h5ad"), path("*-scr"), emit: samp_obj
+  tuple val(samp), path("*_subsetted.h5ad"), emit: samp_obj
 
   script:
   """
@@ -69,7 +69,7 @@ process find_doublets {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/3_doublet_scores", pattern: '*.csv', mode: 'copy'
 
   input:
-  tuple val(samp), path(qc_out), path(scr_bool), path(qc_thres)
+  tuple val(samp), path(qc_out), path(qc_thres)
 
   output:
   tuple val(samp), path("*_scrublet.csv")
@@ -265,7 +265,7 @@ workflow all {
   def samp_collected = run_qc.out.samp_obj.collect(){ it[0] }
   def numSamples = samp_collected.map { it.size() }
 
-  pool_all(samp_collected, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] }, numSamples)
+  pool_all(samp_collected, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[2] }, numSamples)
   finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
   integrate(finalize_qc.out.obj)
 }
@@ -289,7 +289,7 @@ workflow after_qc {
   Channel.fromPath("${params.scrublet_path}/*.csv")
        .flatten()
        .set {scrublets}
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] })
+  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[2] })
   finalize_qc(pool_all.out, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
   integrate(finalize_qc.out.obj)
 }
@@ -304,7 +304,7 @@ workflow until_integrate {
   def samp_collected = run_qc.out.samp_obj.collect(){ it[0] }
   def numSamples = samp_collected.map { it.size() }
 
-  pool_all(samp_collected, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[3] }, numSamples)
+  pool_all(samp_collected, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[2] }, numSamples)
   finalize_qc(pool_all.out.obj, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
 }
 
@@ -333,7 +333,7 @@ workflow subset {
   def samp_collected = subset_object.out.samp_obj.collect(){ it[0] }
   def numSamples = samp_collected.map { it.size() }
 
-  pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, subset_object.out.samp_obj.collect() { it[3] }, numSamples)
+  pool_all(samp_collected, subset_object.out.samp_obj.collect() { it[1] }, subset_object.out.samp_obj.collect() { it[2] }, numSamples)
   finalize_qc_basic(pool_all.out, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
 }
 
