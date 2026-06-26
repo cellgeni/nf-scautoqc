@@ -67,6 +67,63 @@ This release refactors several core scripts and workflow configuration paths to 
 - For mixed cell/nuclei datasets, the default integration strategy is intended to retain genes variable in either modality.
 - Use `--hvg_strategy global` for a single HVG selection across all retained cells.
 
+---
+
+### 26-052
+
+This release is mainly an **doublet-gating + QC-threshold reporting** update, with workflow cleanup and operational improvements.
+
+#### ✅ sctk-aligned workflow updates
+- The doublet-gating sentinel logic was removed from QC/subset flow, and workflow wiring was updated accordingly.
+- `find_doublets` can now run consistently after the upstream sctk update, so conditional gate-file checks are no longer needed.
+- This same sctk-driven update is also why the Singularity image was bumped to `scautoqc-v0.8.0.sif`.
+
+#### 📝 QC threshold reporting changes
+- `run_qc` now writes per-sample tidy threshold summaries as `<sample>_qc_thresholds.csv`.
+- The threshold output now includes per-metric bounds plus pass statistics (`n_pass`, `n_total`, `pass_rate`), and an `all_metrics` summary row.
+- `pool_all` now gathers `*_qc_thresholds.csv` files and produces a consolidated `qc_thresholds.csv`.
+
+#### 📊 QC plotting improvement
+- In multires mode, QC UMAP plotting now includes `pass_default`, `qc_cluster`, and `consensus_passed_qc` overlays for clearer interpretation.
+
+#### Resume / environment updates
+- RESUME helper scripts now export `LSB_DEFAULT_USERGROUP=YourGroup` for smoother cluster execution.
+
+---
+
+### 26-033
+
+This update is mainly a **robustness + parameter-wiring** release, with small but important fixes in input handling and pooling.
+
+#### ✅ Pipeline behaviour changes / fixes
+
+* `--cell_or_nuclei` is now properly propagated through the workflow
+
+  * `main.nf` now passes `--cell_or_nuclei` into `gather_matrices.py`.
+  * The workflow now uses `params.cell_or_nuclei` instead of a hard-coded default (`'cell'`), so the CLI/config value is actually honoured.
+  * `nextflow.config` explicitly includes `cell_or_nuclei = "cell"` in `params` (default remains the same, but now consistent and visible).
+
+#### 🧩 Input handling improvements
+
+* More robust CellBender gather mode support in `gather_matrices.py`
+
+  * When `gather_mode == 'cellbender'`, the script now **checks whether** `raw_feature_bc_matrix.h5` exists and reads it if present.
+  * If the `.h5` file isn’t available, it **falls back to reading** `raw_feature_bc_matrix/` in Matrix Market format (`read_10x_mtx`).
+  * This makes the pipeline tolerate different Cell Ranger output layouts without manual intervention.
+
+#### 🧬 Pooling / feature naming fix
+
+* Improved handling of gene/feature names in `pool_all.py`
+
+  * If feature names contain underscores, the script now normalises them (by splitting and keeping the first components) and then calls `var_names_make_unique()`.
+  * This reduces collisions / downstream issues caused by prefixed or compound feature IDs.
+
+#### 📝 Examples and resume scripts updated
+
+* Updated example run commands and RESUME stubs.
+
+---
+
 ### 25-314
 This release introduces significant changes to the pipeline.  
 ⚠️ Note: h5ad outputs from this version might **not be backward‑compatible** with previous scAutoQC releases.
