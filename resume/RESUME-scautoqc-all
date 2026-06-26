@@ -7,6 +7,7 @@ export LSB_DEFAULT_USERGROUP=YourGroup
 # remove the metadata line below if there is no metadata 
 
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile sanger \
   -entry all \
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -14,7 +15,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
   --cb_prefix /path/to/cellbender-results \
   --cell_or_nuclei cell \
   --cellbender_input cellbender_out_filtered.h5 \
-  --celltypist gut \
+  --celltypist_model gut \
   --ss_out Gene \
   --project_tag project1 \
   --batch_key sampleID \

@@ -4,18 +4,30 @@ nf-scautoqc is the Nextflow implementation of [scAutoQC pipeline](https://teichl
 
 ## How to run:
 
-The recommended way to use nextflow is to run it in a screen session. These steps can be directly used in Sanger's FARM, but you can modify each step according to the environment you're working on or the job scheduler your HPC uses:
+Choose the runtime profile that matches your system:
+
+* `-profile singularity` or `-profile apptainer` for most HPC systems.
+* `-profile docker` for systems where Docker is available.
+* `-profile sanger` for Wellcome Sanger FARM users.
+
+The portable profiles use the published container image from `quay.io/cellgeni/scautoqc`. Singularity or Apptainer users can either let Nextflow pull the image automatically, or pull it manually first:
+
+```bash
+singularity pull scautoqc.sif docker://quay.io/cellgeni/scautoqc:26-177
+```
+
+On Sanger FARM, the recommended way to use Nextflow is to run it in a screen session from a small interactive job:
 
 1. Start a screen session: `screen -S nf_run1`
-2. Start a small interactive job for nextflow: `bsub -G cellgeni -n1 -R"span[hosts=1]" -Is -q long -R"select[mem>2000] rusage[mem=2000]" -M2000 bash`
+2. Start a small interactive job for Nextflow: `bsub -G cellgeni -n1 -R"span[hosts=1]" -Is -q long -R"select[mem>2000] rusage[mem=2000]" -M2000 bash`
 3. Modify one of RESUME scripts in examples folder (pre-made Nextflow run scripts)
-4. Run the RESUME scripts you modified: `./RESUME-scautoqc-all`
+4. Run the RESUME scripts you modified with `-profile sanger`: `./RESUME-scautoqc-all`
 5. You can leave your screen session and let it run in the background: `Ctrl+A, D`
 
 ## Files:
 
 * `main.nf` - the Nextflow pipeline that executes scAutoQC pipeline.
-* `nextflow.config` - the configuration script that allows the processes to be submitted to IBM LSF on Sanger's HPC and ensures correct environment is set via singularity container (this is an absolute path). Global default parameters are also set in this file and some contain absolute paths.
+* `nextflow.config` - the configuration script containing global default parameters, portable Docker/Singularity/Apptainer profiles, and a Sanger FARM profile.
 * `examples/` - a folder that includes pre-made Nextflow run scripts for each workflow:
   * `RESUME-scautoqc-all` 
   * `RESUME-scautoqc-onlyqc`
@@ -60,7 +72,7 @@ The pipeline requires the following primary inputs, typically configured via com
   * `cell_or_nuclei` is a user‑provided annotation (values: `cell` or `nuclei`) used to select default QC thresholds; it is not inferred. If omitted, all samples are treated as `cell`.
   * STARsolo output type to be used: `Gene` or `GeneFull` (`--ss_out`, default: `GeneFull`).
 
-*   Gather mode (`--gather_mode`): `starsolo` or `cellbender` (default: `cellbender`).
+*   Gather mode (`--gather_mode`): `auto`, `starsolo`, or `cellbender` (default: `cellbender`). In `auto` mode, samples annotated as `cell` use `cellbender`; samples annotated as `nuclei` use `starsolo`.
 *   QC mode (`--qc_mode`): `original`, `multires`, or `combined` (default: `original`).
 *   CellTypist model (`--celltypist_model`): `gut` preset or a path to a custom model.
 *   (optional) Cell‑level metadata CSV to add after pooling (`--metadata`).
@@ -107,6 +119,7 @@ The parameters needed for all run modes are already specified in different RESUM
 ```
 # to run all the steps
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry all \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -127,6 +140,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run all the steps before pooling
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry only_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -148,6 +162,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run after qc steps 
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry after_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --postqc_path /path/to/postqc/objects \
@@ -168,6 +183,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run steps until integration
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry until_integrate \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -187,6 +203,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run the integration step only
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry only_integrate \            # to choose run mode
   --path_for_scvi /path/to/object/to/integrate \
   --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
@@ -204,6 +221,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run all the steps without automatic qc
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry subset \                             # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -228,6 +246,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run all the steps
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry all \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -249,6 +268,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run all the steps before pooling
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry only_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -270,6 +290,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run after qc steps 
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry after_qc \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --postqc_path /path/to/postqc/objects \
@@ -290,6 +311,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run steps until integration
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry until_integrate \            # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -309,6 +331,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run the integration step only
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry only_integrate \            # to choose run mode
   --path_for_scvi /path/to/object/to/integrate \
   --project_tag test1 \   # to specify the run to add to the end of output folder (e.g. scautoqc-results-test1)
@@ -326,6 +349,7 @@ nextflow run cellgeni/nf-scautoqc -r main \
 ```
 # to run all the steps without automatic qc
 nextflow run cellgeni/nf-scautoqc -r main \
+  -profile singularity \
   -entry subset \                             # to choose run mode
   --SAMPLEFILE /path/to/sample/file \
   --metadata /path/to/metadata/file \
@@ -349,7 +373,7 @@ This step can use up to three inputs:
   * STARsolo “Velocyto” folder (to add spliced/unspliced/ambiguous layers when available)
   * CellBender output in H5 format (if provided, used for main expression matrix and metadata)
 
-`gather_matrices` combines these into one h5ad per sample with multiple layers: raw, spliced, unspliced, ambiguous. Main expression matrix and cell/gene metadata are taken from CellBender when present; otherwise STARsolo/Cell Ranger are used. The raw layer is taken from the STARsolo folder selected by `--ss_out`. Spliced, unspliced and ambiguous layers are added from the “Velocyto” folder when available, irrespective of using Gene or GeneFull. The cell barcode set can come from STARsolo+CellBender (`gather_mode=starsolo`) or only from CellBender (`gather_mode=cellbender`, default).
+`gather_matrices` combines these into one h5ad per sample with multiple layers: raw, spliced, unspliced, ambiguous. Main expression matrix and cell/gene metadata are taken from CellBender when present; otherwise STARsolo/Cell Ranger are used. The raw layer is taken from the STARsolo folder selected by `--ss_out`. Spliced, unspliced and ambiguous layers are added from the “Velocyto” folder when available, irrespective of using Gene or GeneFull. The cell barcode set can come from STARsolo+CellBender (`gather_mode=starsolo`) or only from CellBender (`gather_mode=cellbender`, default). In v2, `gather_mode=auto` uses `cellbender` for `cell` samples and `starsolo` for `nuclei` samples.
 
 This step can also use Cell Ranger inputs if `--cr_prefix` is provided or the CSV header includes `path_to_cellranger` instead of `path_to_starsolo`; Cell Ranger runs will not include Velocyto layers.
 
