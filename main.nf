@@ -280,18 +280,19 @@ workflow only_qc {
 }
 
 workflow after_qc {
-  Channel.fromPath("${params.SAMPLEFILE}")
-       .splitCsv (header: false) 
-       .flatten()
-       .set {samples}
-  Channel.fromPath("${params.postqc_path}/*.h5ad")
-       .flatten()
-       .set {objects}
-  Channel.fromPath("${params.scrublet_path}/*.csv")
-       .flatten()
-       .set {scrublets}
-  pool_all(run_qc.out.samp_obj.collect(){ it[0] }, run_qc.out.samp_obj.collect() { it[1] }, run_qc.out.samp_obj.collect() { it[2] })
-  finalize_qc(pool_all.out, find_doublets.out.collect(){ it[1] }, pool_all.out.numSamples)
+  def samples = createInputChannels("${params.SAMPLEFILE}")
+
+  def samp_collected = samples.samp.collect()
+  def numSamples = samp_collected.map { it.size() }
+
+  def objects = Channel.fromPath("${params.postqc_path}/*.h5ad").collect()
+  def ranges = Channel.fromPath("${params.postqc_path}/*_qc_thresholds.csv")
+       .collect()
+       .ifEmpty([file("${projectDir}/bin/subset.py")])
+  def scrublets = Channel.fromPath("${params.scrublet_path}/*.csv").collect()
+
+  pool_all(samp_collected, objects, ranges, numSamples)
+  finalize_qc(pool_all.out.obj, scrublets, pool_all.out.numSamples)
   integrate(finalize_qc.out.obj)
 }
 
