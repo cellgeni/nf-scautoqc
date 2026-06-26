@@ -1,5 +1,72 @@
 # Changelog
 
+### 26-177
+
+This release refactors several core scripts and workflow configuration paths to make the pipeline more portable, more explicit about cell/nuclei handling, and easier to run outside Sanger-specific defaults. It updates matrix gathering, pooling, integration, CellTypist model packaging, and `after_qc` wiring while adding clearer runtime profiles and documentation.
+
+⚠️ Note: integrated h5ad outputs from this version may differ from previous releases because HVG selection is now configurable and defaults to `cell_nuclei_union`, which calculates separate cell and nuclei HVGs before using their union for scVI training. Use `--hvg_strategy global` to select one HVG set across all retained cells.
+
+#### ➤ Portability and runtime profiles
+- Added explicit runtime profiles:
+  - `docker`
+  - `singularity`
+  - `apptainer`
+  - `sanger`
+- Portable profiles now use the container image configured by `params.container` (`quay.io/cellgeni/scautoqc:26-177`).
+- Sanger/FARM-specific settings are now isolated in the `sanger` profile, with explicit GPU host parameters:
+  - `--sanger_gpu_hpc farm22|cub22`
+  - `--sanger_gpu_project <project_code>` for `cub22`
+- Updated README and RESUME examples to show explicit profile usage.
+- Updated example scripts to use `--celltypist_model` instead of the old `--celltypist` flag.
+- Updated the Dockerfile dependency setup, including pinned `scanpy==1.9.3` and `anndata==0.10.0`.
+
+#### ➤ Gather matrix improvements
+- Refactored `gather_matrices.py` to handle STARsolo and Cell Ranger inputs more robustly.
+- Added support for `--gather_mode auto`:
+  - `cell` samples use `cellbender`
+  - `nuclei` samples use `starsolo`
+- Improved 10x matrix detection:
+  - supports gzipped and plain matrix files
+  - supports legacy `genes.tsv` as well as `features.tsv`
+- Gene matrix selection is now resolved explicitly as filtered, raw, or automatic.
+- Barcode and feature alignment is now checked by name before constructing the output object.
+- Cell Ranger barcode suffixes are normalised consistently.
+- The original gather script was retained as `bin/gather_matrices_old.py`.
+
+#### ➤ Cell/nuclei metadata propagation
+- `pool_all.py` now carries `cell_or_nuclei` from each gathered object into the pooled object.
+- This makes the cell/nuclei annotation available downstream for integration.
+
+#### ➤ Integration and HVG selection
+- Refactored `integration.py` to reduce peak memory usage:
+  - opens input H5AD files in backed mode
+  - reads only retained cells and selected HVGs for scVI training
+  - re-reads the full-gene object at the end to write the integrated output
+- Added `--hvg_strategy` / `params.hvg_strategy` with two modes:
+  - `cell_nuclei_union` (default): calculates HVGs separately for `cell` and `nuclei` observations, then trains on the union
+  - `global`: calculates one HVG set from all retained cells
+- `--n_top_genes` now defaults to `5000`.
+  - In `cell_nuclei_union` mode, this is applied per group, so the final union can contain more than `n_top_genes`.
+  - In `global` mode, this is the total HVG target.
+- Integration outputs now annotate `.var` with:
+  - `highly_variable`: boolean flag showing whether each gene was selected for scVI training
+  - `highly_variable_group`: selection source for each gene (`cell_only`, `nuclei_only`, `both`, `global`, or `not_highly_variable`)
+- `from_scautoqc` is now parsed as a proper boolean, so string values such as `false` are handled correctly.
+- The previous integration implementation was retained as `bin/integration_old.py`.
+
+#### ➤ CellTypist model packaging
+- Bundled `model_list/MegaGut_Human.pkl` in the repository.
+- The gut CellTypist preset now resolves MegaGut from the repository instead of an external ticket path.
+
+#### ➤ Workflow fixes
+- Fixed `after_qc` input wiring so the workflow builds channels from `--SAMPLEFILE`, `--postqc_path` and `--scrublet_path`.
+- `after_qc` now passes collected sample IDs, post-QC objects, QC threshold files, and scrublet outputs directly into pooling/finalization.
+
+#### ➤ Notes for users
+- Integrated outputs may differ from previous releases because HVG selection is now configurable and defaults to `cell_nuclei_union`.
+- For mixed cell/nuclei datasets, the default integration strategy is intended to retain genes variable in either modality.
+- Use `--hvg_strategy global` for a single HVG selection across all retained cells.
+
 ### 25-314
 This release introduces significant changes to the pipeline.  
 ⚠️ Note: h5ad outputs from this version might **not be backward‑compatible** with previous scAutoQC releases.

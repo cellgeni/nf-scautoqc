@@ -455,13 +455,15 @@ This step requires the h5ad object from `finalize_qc` step.
 
 The integration script keeps memory lower by opening the input H5AD in backed mode, reading only the retained cells and selected HVGs for scVI training, then re-reading the original object at the end to write a full-gene integrated output. The output keeps all genes for retained cells and adds the scVI embedding, neighbours, UMAP, and HVG annotations.
 
+Note: integrated outputs may differ from previous scAutoQC releases because HVG selection is now configurable and defaults to `cell_nuclei_union`. Use `--hvg_strategy global` to select one HVG set across all retained cells.
+
 The following preprocessing is applied before scVI training:
 * Stringent doublets are removed when `--from_scautoqc true`.
 * Cell-cycle genes are excluded from HVG selection when `--from_scautoqc true`.
 * HVGs are selected with `--hvg_strategy`:
   * `cell_nuclei_union` (default): calculates HVGs separately for observations annotated as `cell` and `nuclei` in `cell_or_nuclei`, then uses the union of both sets. `--n_top_genes` is applied per group, so the final union can contain more than `--n_top_genes` genes.
   * `global`: ignores `cell_or_nuclei` and calculates one HVG set from all retained cells. `--n_top_genes` is the total target number of HVGs.
-* The output `.var` includes `highly_variable` and `highly_variable_group`, where the group is `cell_only`, `nuclei_only`, `both`, or `global` depending on the selected strategy.
+* The output `.var` includes `highly_variable` and `highly_variable_group`. `highly_variable` is a boolean flag indicating whether each gene was selected for scVI training. `highly_variable_group` records why it was selected: `cell_only`, `nuclei_only`, or `both` for `cell_nuclei_union`, `global` for `global`, and `not_highly_variable` for genes kept in the full output but not used for scVI training.
 * Latent space dimensionality is 20; batch size is 256.
 
 This step produces:
