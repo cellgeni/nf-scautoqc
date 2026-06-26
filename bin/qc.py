@@ -11,6 +11,7 @@ Notes
 import logging
 import signal
 import sys
+import os
 from pathlib import Path
 
 signal.signal(signal.SIGPIPE, signal.SIG_DFL)
@@ -541,13 +542,15 @@ def main(args):
     """Entry point for CLI execution."""
     logging.info(args)
 
+    base_dir = os.getenv('BASE_DIR')
+
     celltypist_models = {
         "gut": {
             "cecilia22_predH": "Immune_All_High.pkl",
             "cecilia22_predL": "Immune_All_Low.pkl",
             "elmentaite21_pred": "Cells_Intestinal_Tract.pkl",
             "suo22_pred": "Pan_Fetal_Human.pkl",
-            "megagut_pred": "/nfs/cellgeni/tickets/tic-2456/actions/MegaGut_Human.pkl"
+            "megagut_pred": f"{base_dir}/model_list/MegaGut_Human.pkl"
         }
     }
 
