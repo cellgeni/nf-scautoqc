@@ -184,9 +184,9 @@ process integrate {
   publishDir "${launchDir}/scautoqc-results-${params.project_tag}/6_models", pattern: '*.pkl', mode: 'copy'
 
   memory {
-      def inputSizeGB = qc2_out.size() / (1024 * 1024 * 1024)
-      def requestedMemory = (inputSizeGB * 15).GB
-      return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
+      def inputSizeGB = Math.ceil(qc2_out.size() / (1024 * 1024 * 1024)) as int
+      def requestedGB = Math.max(8, (Math.ceil((inputSizeGB * 4) / 8) as int) * 8)
+      return (requestedGB.GB * task.attempt) as nextflow.util.MemoryUnit
   }
 
   input:
@@ -199,7 +199,7 @@ process integrate {
 
   script:
   """
-  python ${projectDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --from_scautoqc ${params.from_scautoqc}
+  python ${projectDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --hvg_strategy ${params.hvg_strategy} --from_scautoqc ${params.from_scautoqc}
   """
 }
 

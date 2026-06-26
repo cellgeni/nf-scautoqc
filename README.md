@@ -75,6 +75,7 @@ The pipeline requires the following primary inputs, typically configured via com
 *   Gather mode (`--gather_mode`): `auto`, `starsolo`, or `cellbender` (default: `cellbender`). In `auto` mode, samples annotated as `cell` use `cellbender`; samples annotated as `nuclei` use `starsolo`.
 *   QC mode (`--qc_mode`): `original`, `multires`, or `combined` (default: `original`).
 *   CellTypist model (`--celltypist_model`): `gut` preset or a path to a custom model.
+*   Integration HVG strategy (`--hvg_strategy`): `cell_nuclei_union` or `global` (default: `cell_nuclei_union`).
 *   (optional) Cell‑level metadata CSV to add after pooling (`--metadata`).
 *   (optional) CSV with custom QC thresholds for the GMM (`--metrics_csv`).
 *   CSV for manual QC cutoffs when running in `subset` mode (`--limits_csv`) (see `example_cutoffs.csv`).
@@ -450,12 +451,18 @@ This step produces [output 6], [output 7], [output 8]:
 ### 6. `integrate`  
 
 This step requires the h5ad object from `finalize_qc` step.
-`integrate` removes stringent doublets and applies scVI integration to all samples using "sampleID" as the batch key (by default), "log1p_n_counts" and "percent_mito" columns as continuous covariates. The following preprocessing is applied:  
-* Stringent doublets (cells with doublet score > 0.3 and BH‑adjusted p < 0.05) are removed.  
-* 7500 highly variable genes are selected (configurable via `--n_top_genes`).  
-* Cell‑cycle genes are removed.  
+`integrate` applies scVI integration to the filtered pooled object using `--batch_key` as the batch key, and `log1p_n_counts` and `percent_mito` as continuous covariates.
+
+The integration script keeps memory lower by opening the input H5AD in backed mode, reading only the retained cells and selected HVGs for scVI training, then re-reading the original object at the end to write a full-gene integrated output. The output keeps all genes for retained cells and adds the scVI embedding, neighbours, UMAP, and HVG annotations.
+
+The following preprocessing is applied before scVI training:
+* Stringent doublets are removed when `--from_scautoqc true`.
+* Cell-cycle genes are excluded from HVG selection when `--from_scautoqc true`.
+* HVGs are selected with `--hvg_strategy`:
+  * `cell_nuclei_union` (default): calculates HVGs separately for observations annotated as `cell` and `nuclei` in `cell_or_nuclei`, then uses the union of both sets. `--n_top_genes` is applied per group, so the final union can contain more than `--n_top_genes` genes.
+  * `global`: ignores `cell_or_nuclei` and calculates one HVG set from all retained cells. `--n_top_genes` is the total target number of HVGs.
+* The output `.var` includes `highly_variable` and `highly_variable_group`, where the group is `cell_only`, `nuclei_only`, `both`, or `global` depending on the selected strategy.
 * Latent space dimensionality is 20; batch size is 256.
-Covariates used by scVI include log1p_n_counts and percent_mito.
 
 This step produces:
 * ***[output 10]:*** final integrated h5ad object
