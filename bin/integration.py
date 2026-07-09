@@ -52,6 +52,29 @@ def str_to_bool(value):
     return str(value).strip().lower() in {"1", "true", "t", "yes", "y"}
 
 
+def optional_obs_key(value):
+    """Return a non-empty obs key or None for unset Nextflow/CLI values."""
+    if value is None:
+        return None
+    value = str(value).strip()
+    return value or None
+
+
+def resolve_hvg_span(value, hvg_batch_key):
+    """Resolve an explicit HVG span or choose a batch-aware default."""
+    if value is None or str(value).strip().lower() in {"", "auto"}:
+        return 1.0 if hvg_batch_key is not None else 0.3
+
+    try:
+        hvg_span = float(value)
+    except ValueError as error:
+        raise ValueError("--hvg_span must be 'auto' or a number in (0, 1].") from error
+
+    if not 0 < hvg_span <= 1:
+        raise ValueError("--hvg_span must be greater than 0 and less than or equal to 1.")
+    return hvg_span
+
+
 def close_backed(adata):
     if getattr(adata, "isbacked", False):
         adata.file.close()
@@ -240,7 +263,9 @@ def get_training_masks(source_ad, from_scautoqc):
     return keep_cells, keep_genes
 
 
-def select_cell_nuclei_hvg_union(source_ad, keep_cells, keep_genes, n_top_genes):
+def select_cell_nuclei_hvg_union(
+    source_ad, keep_cells, keep_genes, n_top_genes, hvg_batch_key, hvg_span
+):
     """Select union HVGs and retain per-modality HVG annotations."""
     group_key = "cell_or_nuclei"
     if group_key not in source_ad.obs:
@@ -281,6 +306,8 @@ def select_cell_nuclei_hvg_union(source_ad, keep_cells, keep_genes, n_top_genes)
                 modality_ad,
                 flavor="seurat_v3",
                 n_top_genes=min(n_top_genes, modality_ad.n_vars),
+                batch_key=hvg_batch_key,
+                span=hvg_span,
                 subset=False,
                 inplace=False,
             )
@@ -317,7 +344,9 @@ def select_cell_nuclei_hvg_union(source_ad, keep_cells, keep_genes, n_top_genes)
     return hvg_genes, hvg_info
 
 
-def select_global_hvgs(source_ad, keep_cells, keep_genes, n_top_genes):
+def select_global_hvgs(
+    source_ad, keep_cells, keep_genes, n_top_genes, hvg_batch_key, hvg_span
+):
     """Select HVGs from all retained cells regardless of cell/nuclei status."""
     log("Global HVG selection will use all retained cells.")
     with log_step("Read matrix for global HVG selection"):
@@ -334,6 +363,8 @@ def select_global_hvgs(source_ad, keep_cells, keep_genes, n_top_genes):
             hvg_ad,
             flavor="seurat_v3",
             n_top_genes=min(n_top_genes, hvg_ad.n_vars),
+            batch_key=hvg_batch_key,
+            span=hvg_span,
             subset=False,
             inplace=False,
         )
@@ -354,15 +385,38 @@ def select_global_hvgs(source_ad, keep_cells, keep_genes, n_top_genes):
     return hvg_genes, hvg_info
 
 
-def select_hvgs(source_ad, keep_cells, keep_genes, n_top_genes, hvg_strategy):
+def select_hvgs(
+    source_ad,
+    keep_cells,
+    keep_genes,
+    n_top_genes,
+    hvg_strategy,
+    hvg_batch_key,
+    hvg_span,
+):
+    if hvg_batch_key is not None and hvg_batch_key not in source_ad.obs:
+        raise KeyError(f"Expected HVG batch key {hvg_batch_key!r} in adata.obs.")
+
+    if hvg_batch_key is None:
+        log("HVG selection will not use a batch key.")
+    else:
+        log(f"HVG selection will use batch key: {hvg_batch_key}")
+    log(f"HVG selection will use span: {hvg_span}")
+
     if hvg_strategy == "cell_nuclei_union":
-        return select_cell_nuclei_hvg_union(source_ad, keep_cells, keep_genes, n_top_genes)
+        return select_cell_nuclei_hvg_union(
+            source_ad, keep_cells, keep_genes, n_top_genes, hvg_batch_key, hvg_span
+        )
     if hvg_strategy == "global":
-        return select_global_hvgs(source_ad, keep_cells, keep_genes, n_top_genes)
+        return select_global_hvgs(
+            source_ad, keep_cells, keep_genes, n_top_genes, hvg_batch_key, hvg_span
+        )
     raise ValueError(f"Unknown HVG strategy: {hvg_strategy}")
 
 
-def read_training_object(obj_path, from_scautoqc, n_top_genes, hvg_strategy):
+def read_training_object(
+    obj_path, from_scautoqc, n_top_genes, hvg_strategy, hvg_batch_key, hvg_span
+):
     """Load only retained cells and selected HVGs for scVI training."""
     with log_step(f"Open input object backed: {obj_path}"):
         source_ad = sc.read_h5ad(obj_path, backed="r")
@@ -370,7 +424,13 @@ def read_training_object(obj_path, from_scautoqc, n_top_genes, hvg_strategy):
         keep_cells, keep_genes = get_training_masks(source_ad, from_scautoqc)
         with log_step(f"Select HVGs using strategy: {hvg_strategy}"):
             hvg_genes, hvg_info = select_hvgs(
-                source_ad, keep_cells, keep_genes, n_top_genes, hvg_strategy
+                source_ad,
+                keep_cells,
+                keep_genes,
+                n_top_genes,
+                hvg_strategy,
+                hvg_batch_key,
+                hvg_span,
             )
         with log_step("Read final SCVI training matrix"):
             train_ad = read_minimal_view(source_ad, keep_cells, hvg_genes)
@@ -463,6 +523,22 @@ def main():
         ),
     )
     parser.add_argument(
+        "--hvg_batch_key",
+        default="",
+        help=(
+            "optional obs column to pass as batch_key to "
+            "scanpy.pp.highly_variable_genes"
+        ),
+    )
+    parser.add_argument(
+        "--hvg_span",
+        default="auto",
+        help=(
+            "span to pass to scanpy.pp.highly_variable_genes; "
+            "auto uses 1.0 with --hvg_batch_key and 0.3 otherwise [default: auto]"
+        ),
+    )
+    parser.add_argument(
         "--verbose",
         action="store_true",
         help="print detailed matrix-reading and cleanup logs",
@@ -478,7 +554,8 @@ def main():
     log(
         "integration.py started with "
         f"obj={args.obj}, batch={args.batch}, n_top_genes={args.n_top_genes}, "
-        f"hvg_strategy={args.hvg_strategy}, from_scautoqc={args.from_scautoqc}"
+        f"hvg_strategy={args.hvg_strategy}, hvg_batch_key={args.hvg_batch_key}, "
+        f"hvg_span={args.hvg_span}, from_scautoqc={args.from_scautoqc}"
     )
 
     arches_params = dict(
@@ -490,10 +567,17 @@ def main():
     )
 
     from_scautoqc = str_to_bool(args.from_scautoqc)
+    hvg_batch_key = optional_obs_key(args.hvg_batch_key)
+    hvg_span = resolve_hvg_span(args.hvg_span, hvg_batch_key)
 
     with log_step("Prepare training object"):
         train_ad, hvg_info = read_training_object(
-            args.obj, from_scautoqc, args.n_top_genes, args.hvg_strategy
+            args.obj,
+            from_scautoqc,
+            args.n_top_genes,
+            args.hvg_strategy,
+            hvg_batch_key,
+            hvg_span,
         )
     gc.collect()
 

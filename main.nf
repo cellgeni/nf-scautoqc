@@ -199,8 +199,9 @@ process integrate {
   path("*.pkl")
 
   script:
+  def hvgBatchArg = params.hvg_batch_key ? "--hvg_batch_key ${params.hvg_batch_key}" : ""
   """
-  python ${projectDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --hvg_strategy ${params.hvg_strategy} --from_scautoqc ${params.from_scautoqc}
+  python ${projectDir}/bin/integration.py --obj ${qc2_out} --batch ${params.batch_key} --n_top_genes ${params.n_top_genes} --hvg_strategy ${params.hvg_strategy} ${hvgBatchArg} --hvg_span ${params.hvg_span} --from_scautoqc ${params.from_scautoqc}
   """
 }
 
