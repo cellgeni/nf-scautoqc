@@ -174,7 +174,7 @@ def run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold):
     for max_mito in reversed(MITO_THRESHOLDS):
         ad.obs.loc[ad.obs[f"good_qc_cluster_mito{max_mito}"], "good_qc_cluster"] = max_mito
 
-def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold):
+def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold, consensus_floor):
     """Multi-resolution QC approach with consensus across clusterings."""
 
     sk._pipeline.generate_qc_clusters(ad, metrics=qc_metrics)
@@ -229,14 +229,13 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold):
         ad.uns["consensus_threshold_degenerate"] = False
 
     # Optional stricter rescue: require a high raw fraction on top of kp9's boolean.
-    CONS_FLOOR = 0.90   # adjust (0.85–0.95) as you like
     ad.obs["keep_multires"] = (
         ad.obs["cluster_passed_qc"] |
-        (ad.obs["consensus_passed_qc"] & (frac >= CONS_FLOOR))
+        (ad.obs["consensus_passed_qc"] & (frac >= consensus_floor))
     )
 
 
-def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
+def run_qc_combined(ad, qc_metrics, metrics_custom, threshold, consensus_floor):
     """Combined original + multi-resolution QC across mitochondrial thresholds."""
 
     for max_mito in MITO_THRESHOLDS:
@@ -309,8 +308,6 @@ def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
 
     # --- Degenerate guard + controlled collapse (combined) ---
     eps = 1e-9
-    CONS_FLOOR = 0.90   # optional: demand high cross-resolution agreement
-
     for max_mito in MITO_THRESHOLDS:
         frac_key = f"consensus_fraction_mito{max_mito}"
         pass_key = f"consensus_passed_qc_mito{max_mito}"
@@ -321,8 +318,7 @@ def run_qc_combined(ad, qc_metrics, metrics_custom, threshold):
             ad.uns.setdefault("consensus_threshold_degenerate", {})[max_mito] = "degenerate_all_zero"
 
         # Optional stricter rescue: require high raw fraction too
-        if CONS_FLOOR is not None:
-            ad.obs[pass_key] &= (ad.obs[frac_key] >= CONS_FLOOR)
+        ad.obs[pass_key] &= (ad.obs[frac_key] >= consensus_floor)
 
     # Optional interpretability: if pass at stricter mito, pass at looser too
     ad.obs["consensus_passed_qc_mito50"] |= ad.obs["consensus_passed_qc_mito20"]
@@ -490,7 +486,14 @@ def generate_qc_plots(ad, qc_metrics, qc_mode, metric_pairs, ctp_models, ctp_nam
         qc_consensus_ufig,
         qc_consensus_venn
     )
-def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, threshold=0.5):
+def run_qc(
+    ad,
+    ctp_models=None,
+    qc_mode="original",
+    metrics_custom=None,
+    threshold=0.5,
+    consensus_floor=0.90,
+):
     """End-to-end QC run: compute metrics, run QC, and build figures."""
 
     qc_metrics = list(DEFAULT_QC_METRICS)
@@ -513,13 +516,17 @@ def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, thresho
     logging.info("Calculating QC metrics")
     calculate_qc(ad, run_scrublet=("scrublet_score" in qc_metrics))
 
-    logging.info(f"Starting QC: mode={qc_mode}, cutoff={args.gmm_cutoff}")
+    logging.info(
+        f"Starting QC: mode={qc_mode}, cutoff={args.gmm_cutoff}, "
+        f"consensus_floor={consensus_floor}"
+    )
+    ad.uns["consensus_floor"] = float(consensus_floor)
     if qc_mode == "original":
         run_qc_mito_loop_original(ad, qc_metrics, metrics_custom, threshold)
     elif qc_mode == "multires":
-        run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold)
+        run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold, consensus_floor)
     elif qc_mode == "combined":
-        run_qc_combined(ad, qc_metrics, metrics_custom, threshold)
+        run_qc_combined(ad, qc_metrics, metrics_custom, threshold, consensus_floor)
     else:
         raise ValueError(f"Unknown QC mode: {qc_mode}")
 
@@ -527,7 +534,7 @@ def run_qc(ad, ctp_models=None, qc_mode="original", metrics_custom=None, thresho
     return generate_qc_plots(ad, qc_metrics, qc_mode, metric_pairs, ctp_models, ctp_name)
 
 
-def process_sample(ad, ctp_models, qc_mode, metrics_custom, min_frac):
+def process_sample(ad, ctp_models, qc_mode, metrics_custom, min_frac, consensus_floor):
     """Wrapper around run_qc to keep the original structure."""
     return run_qc(
         ad=ad,
@@ -535,6 +542,7 @@ def process_sample(ad, ctp_models, qc_mode, metrics_custom, min_frac):
         qc_mode=qc_mode,
         metrics_custom=metrics_custom,
         threshold=min_frac,
+        consensus_floor=consensus_floor,
     )
 
 
@@ -571,6 +579,10 @@ def main(args):
     else:
         min_frac = float(0.5)
 
+    consensus_floor = float(args.consensus_floor)
+    if not 0 <= consensus_floor <= 1:
+        raise ValueError("--consensus_floor must be between 0 and 1.")
+
     if args.metrics_csv is not None:
         logging.info(f"Using custom metrics from {args.metrics_csv}")
         metrics_custom = pd.read_csv(Path(args.metrics_csv), index_col=0)
@@ -596,7 +608,9 @@ def main(args):
         qc_cluster_ufig,
         qc_consensus_ufig,
         qc_consensus_venn
-    ) = process_sample(ad, ctp_models, qc_mode, metrics_custom, min_frac)
+    ) = process_sample(
+        ad, ctp_models, qc_mode, metrics_custom, min_frac, consensus_floor
+    )
 
     logging.info("Saving QC plots")
     def _save(fig, filename):
@@ -705,6 +719,7 @@ if __name__ == "__main__":
     parser.add_argument("--metrics_csv", type=nullable_string, nargs='?', help="CSV file of metric cutoffs")
     parser.add_argument("--celltypist_model", nargs='?', help="comma-separated <name>:<model.pkl> pairs or a predefined set key (e.g., 'gut')")
     parser.add_argument("--min_frac", default=None, help="min frac of pass_auto_filter for a cluster to be called good [default: 0.5]")
+    parser.add_argument("--consensus_floor", default=0.90, type=float, help="minimum consensus fraction required for multires/combined consensus rescue [default: 0.90]")
     parser.add_argument("--gath_obj", default=None, help="path to the AnnData object from gather_matrices step")
     parser.add_argument("--gmm_cutoff", default=None, help="whether to use closest or furthest point relative to GMM PDF")
     parser.add_argument("--sample_id", default=None, help="sample id")

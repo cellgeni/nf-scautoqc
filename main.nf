@@ -41,7 +41,7 @@ process run_qc {
   script:
   """
   export BASE_DIR=${projectDir}
-  python ${projectDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist_model ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out} --gmm_cutoff ${params.gmm_cutoff}
+  python ${projectDir}/bin/qc.py --sample_id ${samp} --metrics_csv ${params.metrics_csv} --celltypist_model ${params.celltypist_model} --qc_mode ${params.qc_mode} --gath_obj ${gath_out} --gmm_cutoff ${params.gmm_cutoff} --consensus_floor ${params.consensus_floor}
   """
 }
 
