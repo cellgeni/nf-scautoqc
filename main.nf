@@ -97,9 +97,9 @@ process pool_all {
   memory {
       def numSamples = samp.size()
       def baseMemory = 10.GB
-      def perSampleMemory = 1.GB * numSamples
+      def perSampleMemory = 1.65.GB * numSamples
       def requestedMemory = [baseMemory, perSampleMemory].max()
-      return (requestedMemory * 1.4 * task.attempt) as nextflow.util.MemoryUnit
+      return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
   }
 
   input:
@@ -127,8 +127,8 @@ process finalize_qc {
 
   memory {
       def inputSizeGB = pool_out.size() / (1024 * 1024 * 1024)
-      def baseMemory = 8.GB
-      def memoryMultiplier = 3.5  // Conservative multiplier between observed values
+      def baseMemory = 16.GB
+      def memoryMultiplier = 6.5
       def requestedMemory = baseMemory + (inputSizeGB * memoryMultiplier).GB
       return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
   }
@@ -157,8 +157,8 @@ process finalize_qc_basic {
 
   memory {
       def inputSizeGB = pool_out.size() / (1024 * 1024 * 1024)
-      def baseMemory = 8.GB
-      def memoryMultiplier = 3.5  // Conservative multiplier between observed values
+      def baseMemory = 16.GB
+      def memoryMultiplier = 6.5
       def requestedMemory = baseMemory + (inputSizeGB * memoryMultiplier).GB
       return (requestedMemory * task.attempt) as nextflow.util.MemoryUnit
   }
@@ -186,7 +186,7 @@ process integrate {
 
   memory {
       def inputSizeGB = Math.ceil(qc2_out.size() / (1024 * 1024 * 1024)) as int
-      def requestedGB = Math.max(8, (Math.ceil((inputSizeGB * 4) / 8) as int) * 8)
+      def requestedGB = Math.max(8, (Math.ceil((inputSizeGB * 18) / 8) as int) * 8)
       return (requestedGB.GB * task.attempt) as nextflow.util.MemoryUnit
   }
 
