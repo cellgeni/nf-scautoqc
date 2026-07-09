@@ -184,7 +184,7 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold, consensus_floor)
             metrics = {
                 "n_counts": (1000, None, "log", "min_only", 0.1),
                 "n_genes": (100, None, "log", "min_only", 0.1),
-                "percent_mito": (0.1, 20, "log", "max_only", 0.1),
+                "percent_mito": (0.1, 80, "log", "max_only", 0.1),
                 "percent_spliced": (50, 97.5, "log", "both", 0.1),
             }
         elif ad.uns['cell_or_nuclei'] == 'nuclei':
@@ -192,7 +192,7 @@ def run_qc_multi_res(ad, qc_metrics, metrics_custom, threshold, consensus_floor)
                 "n_counts": (300, None, "log", "min_only", 0.1),
                 "n_genes": (100, None, "log", "min_only", 0.1),
                 "percent_mito": (0.1, 20, "log", "max_only", 0.1),
-                "percent_spliced": (0.01, 100, "log", "max_only", 0.1),
+                "percent_spliced": (0.01, 80, "log", "max_only", 0.1),
             }
     else:
         metrics = {k: tuple(v.values()) for k, v in metrics_custom.to_dict(orient="index").items()}
